@@ -2,7 +2,7 @@
 
 # 🧠 new-project-ai-context
 
-### AI Context Files That Actually Work
+### 7 PILAR Framework for AI Agent Effectiveness
 
 **Stop repeating yourself to AI agents. Start every project with context that makes them 10x more effective.**
 
@@ -15,58 +15,44 @@
 
 ## 🤔 Why This Exists
 
-Every time you start a new project, AI coding agents (Claude Code, Hermes, Cursor, Codex, OpenCode) begin with **zero context**. They don't know your build commands, your code style, your testing setup, or your project's gotchas.
+Every time you start a new project, AI coding agents begin with **zero context**. They don't know your build commands, your code style, your testing setup, or your project's gotchas.
 
-You end up explaining the same things **over and over**.
-
-This skill fixes that. It auto-generates research-backed AI context files that make agents immediately productive on your project.
+This skill fixes that with the **7 PILAR Framework** — research-backed from Anthropic's internal data and community best practices.
 
 ---
 
-## 📊 What Makes Context Files Impactful?
+## 🏛️ The 7 PILAR Framework
 
-Based on [Anthropic's internal data](https://code.claude.com/docs/en/best-practices) and community research:
+| PILAR | Nama | Fungsi | Agent... |
+|-------|------|--------|----------|
+| 1 | **SOUL.md** | Agent Identity | TAHU siapa dirinya |
+| 2 | **MCP Servers** | External Tools | BISA aksi langsung |
+| 3 | **Hooks** | Automation | AUTO-jaga kualitas |
+| 4 | **Skills** | Reusable Procedures | TAHU cara kerja |
+| 5 | **Goal Prompting** | Clear Success Criteria | TAHU kapan selesai |
+| 6 | **Context Mgmt** | Keep Agent Sharp | TETAP SHARP |
+| 7 | **Subagents** | Parallelism | BISA SCALE |
 
-| Impact | What to Include | Example |
-|--------|----------------|---------|
-| 🔴 **HIGH** | Build/test commands agent can't guess | `make test`, `npm run lint` |
-| 🔴 **HIGH** | Code style rules that DIFFER from defaults | "Use 2-space indent, not 4" |
-| 🔴 **HIGH** | Verification commands for self-correction | "Run `pytest` after changes" |
-| 🔴 **HIGH** | Non-obvious gotchas | "Env var `DB_URL` required for tests" |
-| 🟡 **MEDIUM** | Architecture decisions | "Uses CQRS pattern, see src/commands/" |
-| 🟡 **MEDIUM** | Git workflow conventions | "Branch: feat/*, fix/*, chore/*" |
-| ⚪ **SKIP** | Standard conventions agent already knows | "Write clean code" |
-| ⚪ **SKIP** | Detailed API docs | Link instead |
-
-> **Key insight:** Agents ignore bloated files. Keep each file **under 200 lines**. Every line should pass the test: *"Would removing this cause the agent to make mistakes?"*
-
----
-
-## 📁 Files Generated
-
-### `AGENTS.md` — Portable, works with ALL agents
 ```
-Hermes ✅ | Claude Code ✅ | Codex ✅ | OpenCode ✅ | Cursor ✅
+┌─────────────────────────────────────────────────────────────┐
+│  Agent + 7 PILAR = FULLY AUTONOMOUS                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  PILAR 1: SOUL.md        → Agent TAHU siapa dirinya        │
+│  PILAR 2: MCP Servers    → Agent BISA aksi langsung         │
+│  PILAR 3: Hooks          → Agent AUTO-jaga kualitas         │
+│  PILAR 4: Skills         → Agent TAHU cara kerja            │
+│  PILAR 5: Goal Prompting → Agent TAHU kapan selesai         │
+│  PILAR 6: Context Mgmt   → Agent TETAP SHARP                │
+│  PILAR 7: Subagents      → Agent BISA SCALE                 │
+│                                                             │
+│  Context Files (AGENTS.md, CLAUDE.md)                       │
+│            → Agent TAHU projectnya                          │
+│                                                             │
+│  User = reviewer, bukan babysitter                          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
-The universal base file. Contains build commands, code standards, testing setup, and project conventions.
-
-### `CLAUDE.md` — Claude Code optimized
-```
-Claude Code ✅ | Cursor ✅ (via import)
-```
-Imports `AGENTS.md` and adds Claude-specific instructions (plan mode rules, verification workflows).
-
-### `.hermes.md` — Hermes Agent specific
-```
-Hermes ✅
-```
-Hierarchical file that walks up to git root. Good for monorepo overrides.
-
-### `.cursor/rules/*.mdc` — Cursor path-scoped rules
-```
-Cursor ✅
-```
-Rules that only load when editing specific file types (e.g., frontend rules load only when editing `.tsx`).
 
 ---
 
@@ -82,116 +68,116 @@ Just say to your AI agent:
 > "Setup AI context for this project"
 
 The agent will:
-1. **Detect** your tech stack (package.json, pyproject.toml, Cargo.toml, etc.)
-2. **Generate** context files filled with real commands from your project
-3. **Verify** that build/test commands actually work
+1. **Create SOUL.md** — Agent identity (PILAR 1)
+2. **Setup MCP Servers** — Database, GitHub, browser (PILAR 2)
+3. **Configure Hooks** — Auto-lint, auto-test (PILAR 3)
+4. **Create Skills** — Reusable workflows (PILAR 4)
+5. **Add Goal Rules** — Clear success criteria (PILAR 5)
+6. **Add Context Rules** — Keep agent sharp (PILAR 6)
+7. **Define Subagents** — Specialist agents (PILAR 7)
+8. **Generate Context Files** — AGENTS.md, CLAUDE.md, .hermes.md
 
 ---
 
-## 📋 Template Preview
+## 📋 Each PILAR Explained
 
-<details>
-<summary><b>AGENTS.md</b> — Click to expand</summary>
-
-```markdown
-# My Project
-
-## Overview
-- REST API for user management
-- Tech stack: FastAPI, SQLAlchemy, PostgreSQL, Redis
-
-## Build & Run
-- `make dev` — start dev server on :8000
-- `make test` — run full test suite
-- `make lint` — ruff + mypy
-
-## Code Standards
-- Type hints on ALL public functions
-- Google-style docstrings
-- 4-space indentation
-- No wildcard imports
-
-## Testing
-- Framework: pytest with xdist
-- Run single: `pytest tests/test_auth.py -v`
-- Coverage target: 90%
-
-## Common Gotchas
-- `DATABASE_URL` env var required for tests
-- Redis must be running for session tests
-- Migrations use Alembic, not raw SQL
-
-## Key Directories
-- `src/api/` — FastAPI route handlers
-- `src/models/` — SQLAlchemy models
-- `src/services/` — Business logic
-```
-</details>
-
-<details>
-<summary><b>CLAUDE.md</b> — Click to expand</summary>
+### PILAR 1: SOUL.md — Agent Identity
 
 ```markdown
-# My Project
-
-@AGENTS.md
-
-## Claude-Specific Instructions
-- Use plan mode for changes affecting 3+ files
-- Always run `make test` after modifications
-- Prefer async/await over sync in API handlers
-- Write failing test first, then fix (TDD)
+# Agent Identity
+You are a senior backend engineer specializing in Python and Go APIs.
+## Expertise
+- Primary: Python (FastAPI, SQLAlchemy), Go (Gin, GORM)
+## Coding Philosophy
+- Solve the problem with the least code possible
+- If it's not tested, it's broken
+## Quality Standards
+- Type hints on ALL functions
+- 90% test coverage minimum
 ```
-</details>
 
-<details>
-<summary><b>.hermes.md</b> — Click to expand</summary>
+**Impact:** Agent punya karakter konsisten lintas session.
+
+### PILAR 2: MCP Servers — External Tools
+
+```bash
+claude mcp add postgres -- npx @anthropic-ai/server-postgres --connection-string postgresql://localhost/mydb
+claude mcp add github -- npx @modelcontextprotocol/server-github
+```
+
+**Impact:** Agent bisa verify sendiri hasilnya.
+
+### PILAR 3: Hooks — Automation
+
+```json
+{
+  "PostToolUse": [
+    {"matcher": "Write(*.py)", "hooks": [{"type": "command", "command": "ruff check --fix $CLAUDE_FILE_PATHS"}]}
+  ]
+}
+```
+
+**Impact:** Auto-quality enforcement tanpa user intervention.
+
+### PILAR 4: Skills — Reusable Procedures
 
 ```markdown
-# My Project
-
-Hermes: when working in this repo, follow these rules.
-
-## Build
-- `make dev` — start dev server
-- `make test` — run full test suite
-- Use `uv run` for Python, not `pip install`
-
-## Style
-- Prefer `pathlib.Path` over `os.path`
-- No `print()` in production code — use `logger`
-
-## Workflow
-- Always run tests before declaring done
-- Create PR with descriptive title
+# .claude/skills/add-api-endpoint.md
+When asked to add a new API endpoint:
+1. Check existing endpoints for patterns
+2. Create handler in src/api/handlers/
+3. Register route in router.py
+4. Write test in tests/api/
+5. Run `make test`
 ```
-</details>
+
+**Impact:** Agent tidak reinvent the wheel.
+
+### PILAR 5: Goal-Oriented Prompting
+
+```
+❌ "Fix the login bug"
+✅ "Users report login fails after timeout. Check src/auth/token_refresh.py.
+    Write failing test, fix root cause. Verify: all auth tests pass."
+```
+
+**Impact:** Agent bisa self-correct tanpa user intervention.
+
+### PILAR 6: Context Window Management
+
+| Usage | Status | Action |
+|-------|--------|--------|
+| < 70% | ✅ Normal | No action |
+| 70-85% | ⚠️ Warning | `/compact` |
+| > 85% | 🔴 Danger | New session |
+
+**Impact:** Agent tetap sharp sepanjang session.
+
+### PILAR 7: Subagents & Parallelism
+
+```python
+delegate_task(tasks=[
+    {"goal": "Refactor auth module to use JWT"},
+    {"goal": "Write integration tests for API"},
+    {"goal": "Update API documentation"}
+])
+```
+
+**Impact:** Parallel execution, isolated contexts, full precision.
 
 ---
 
-## 🏗️ How It Works
+## 📁 Files Generated
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    NEW PROJECT                           │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  1. DETECT     → Scan package.json, pyproject.toml,     │
-│                  Makefile, directory structure            │
-│                                                         │
-│  2. GENERATE   → Fill templates with REAL commands       │
-│                  Extract actual build/test/lint cmds     │
-│                                                         │
-│  3. VERIFY     → Test that commands actually work        │
-│                  Confirm no contradictions                │
-│                                                         │
-│  4. DEPLOY     → AGENTS.md  (portable base)             │
-│                  CLAUDE.md  (imports + Claude rules)     │
-│                  .hermes.md (Hermes hierarchical)        │
-│                  .cursor/rules/ (path-scoped, optional)  │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
+| File | Agent | Purpose |
+|------|-------|---------|
+| `SOUL.md` | All | Agent identity (global) |
+| `AGENTS.md` | All | Portable project context |
+| `CLAUDE.md` | Claude Code | Imports AGENTS.md + additions |
+| `.hermes.md` | Hermes | Hierarchical project rules |
+| `.claude/agents/*.md` | Claude Code | Specialist subagents |
+| `.claude/skills/*.md` | Claude Code | Reusable workflows |
+| `.claude/settings.json` | Claude Code | Hooks configuration |
 
 ---
 
@@ -202,58 +188,45 @@ Hermes: when working in this repo, follow these rules.
 > *"Claude's context window fills up fast, and performance degrades as it fills."*
 > — [Anthropic Best Practices](https://code.claude.com/docs/en/best-practices)
 
-Effective context files:
-- **Reduce token waste** — Agent doesn't explore to discover build commands
-- **Enable self-correction** — Verification commands close the loop
-- **Prevent repeated mistakes** — Gotchas are documented once
-- **Save your time** — No more explaining the same things each session
-
-### Path-Scoped Rules (Monorepo Power)
-
-Instead of one massive file, split rules by directory:
-```
-.claude/rules/
-├── frontend.md    → Only loads when editing src/web/
-├── api.md         → Only loads when editing src/api/
-├── database.md    → Only loads when editing src/db/
-└── testing.md     → Only loads when editing tests/
-```
-
-Each file is **only injected when relevant**, keeping context lean.
+The 7 PILAR framework addresses this:
+- **PILAR 1-5** = Make agent effective when context is available
+- **PILAR 6** = Keep context lean so quality doesn't degrade
+- **PILAR 7** = Scale beyond single context window
 
 ---
 
 ## 🤝 Compatible Agents
 
-| Agent | AGENTS.md | CLAUDE.md | .hermes.md | .cursor/rules |
-|-------|-----------|-----------|------------|---------------|
-| **Hermes** | ✅ Native | ✅ Import | ✅ Native | — |
-| **Claude Code** | ✅ Import | ✅ Native | — | — |
-| **Cursor** | — | ✅ Read | — | ✅ Native |
-| **Codex** | ✅ Native | ✅ Read | — | — |
-| **OpenCode** | ✅ Native | ✅ Read | — | — |
-| **Cline** | ✅ Read | ✅ Read | — | — |
-| **Windsurf** | ✅ Read | ✅ Read | — | — |
+| Agent | AGENTS.md | CLAUDE.md | SOUL.md | MCP | Hooks | Skills | Subagents |
+|-------|-----------|-----------|---------|-----|-------|--------|-----------|
+| **Hermes** | ✅ | ✅ Import | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Claude Code** | ✅ Import | ✅ | ✅ Global | ✅ | ✅ | ✅ | ✅ |
+| **Cursor** | — | ✅ | ✅ Global | — | — | — | — |
+| **Codex** | ✅ | ✅ | — | — | — | — | — |
 
 ---
 
 ## 📖 Best Practices
 
 ### DO ✅
-- Keep files under **200 lines**
-- Be **specific**: "Use 2-space indent" not "Format properly"
-- Include **verification commands**: `npm test`, `make lint`
-- Document **non-default** style rules only
-- Check into **git** for team sharing
-- **Review and prune** regularly
+- Create SOUL.md FIRST (PILAR 1)
+- Setup MCP for verification (PILAR 2)
+- Use hooks for auto-quality (PILAR 3)
+- Create skills for repeatable tasks (PILAR 4)
+- Use goal-oriented prompts (PILAR 5)
+- Monitor context usage (PILAR 6)
+- Use subagents for parallel work (PILAR 7)
+- Keep files under 200 lines
+- Check into git for team sharing
 
 ### DON'T ❌
-- Write obvious things ("write clean code")
-- Include standard language conventions
-- Paste detailed API docs (link instead)
-- Add info that changes frequently
-- Exceed 200 lines (agents start ignoring rules)
-- Contradict rules between files
+- Skip SOUL.md (inconsistent personality)
+- Skip MCP (agent can't verify)
+- Skip hooks (user jadi babysitter)
+- Skip skills (repeat tasks need re-explaining)
+- Use vague prompts (multiple correction rounds)
+- Ignore context > 85% (hallucination risk)
+- Use subagents for simple tasks (overhead)
 
 ---
 
@@ -269,7 +242,7 @@ PRs welcome! Here's how:
 
 ### Ideas for Contributions
 - Templates for more tech stacks (Rust, Go, Flutter, etc.)
-- Path-scoped rule templates for common architectures
+- More specialist subagent definitions
 - Integration with more AI agents
 - Real-world examples from your projects
 
@@ -294,6 +267,6 @@ MIT — use it however you want. See [LICENSE](LICENSE).
 
 **Made with 🧠 by [zufarrizal](https://github.com/zufarrizal)**
 
-*Because every project deserves an AI agent that actually knows what it's doing.*
+*7 PILAR Framework — Because every project deserves an AI agent that actually knows what it's doing.*
 
 </div>
