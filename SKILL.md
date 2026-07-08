@@ -1,13 +1,13 @@
 ---
 name: project-context-setup
-description: "Set up AI context files for new projects across all coding agents (Hermes, Claude Code, Cursor, Codex). Maximizes AI output quality through structured context. Includes 5 PILAR: SOUL.md, MCP Servers, Hooks, Skills, Goal-Oriented Prompting."
-version: 1.5.0
+description: "Set up AI context files for new projects across all coding agents (Hermes, Claude Code, Cursor, Codex). Maximizes AI output quality through structured context. Includes 6 PILAR: SOUL.md, MCP Servers, Hooks, Skills, Goal Prompting, Context Window Management."
+version: 1.6.0
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [ai-context, project-setup, claude-md, agents-md, cursorrules, soul-md, mcp-servers, hooks, skills, goal-prompting, coding-agents]
+    tags: [ai-context, project-setup, claude-md, agents-md, cursorrules, soul-md, mcp-servers, hooks, skills, goal-prompting, context-management, coding-agents]
     related_skills: [hermes-agent, claude-code, codex, opencode]
 ---
 
@@ -30,20 +30,6 @@ Set up AI context files that maximize coding agent effectiveness. Covers all maj
 
 SOUL.md menentukan **siapa** agent ini. Ini FONDASI yang membuat semua context files lainnya bekerja dengan efektif.
 
-### Kenapa SOUL.md Penting?
-
-Tanpa SOUL.md, agent adalah "generalist" yang tidak punya pendirian. Dengan SOUL.md:
-- Agent punya **karakter konsisten** lintas session
-- Agent **tidak perlu di-reminder** soal preferensi coding style
-- Agent membuat **keputusan yang sama** untuk situasi yang sama
-- Agent **menolak** approach yang bertentangan dengan identity-nya
-
-### Cek SOUL.md Sudah Ada atau Belum
-
-```bash
-cat ~/.hermes/SOUL.md 2>/dev/null || echo "SOUL.md NOT FOUND"
-```
-
 ### Template: SOUL.md
 
 ```markdown
@@ -63,13 +49,7 @@ You are a {senior_role} specializing in {domain}.
 ## Behavior Rules
 - Always explain trade-offs before making architectural decisions
 - Prefer {language/framework} over {alternative} unless explicitly asked
-- Never use {anti_patterns} unless the user insists
 - When uncertain, ask — don't guess on critical decisions
-
-## Communication Style
-- {concise/detailed} responses
-- {direct/diplomatic} when pointing out issues
-- Show code first, explain after
 
 ## Quality Standards
 - Every function must have {type hints/typed parameters}
@@ -77,7 +57,7 @@ You are a {senior_role} specializing in {domain}.
 - No silent failures — always {log/throw} on errors
 ```
 
-### Lokasi SOUL.md
+### Lokasi
 
 | Platform | Lokasi | Scope |
 |----------|--------|-------|
@@ -90,17 +70,6 @@ You are a {senior_role} specializing in {domain}.
 ## PILAR 2: MCP Servers — External Tools
 
 MCP Servers memberi agent akses ke tools external sehingga bisa **verifikasi sendiri hasilnya**.
-
-### MCP Servers by Use Case
-
-| Use Case | MCP Server | What Agent Can Do |
-|----------|------------|-------------------|
-| **Database** | PostgreSQL, MySQL, SQLite | Query data, verify schemas |
-| **GitHub** | @modelcontextprotocol/server-github | Issues, PRs, code search |
-| **Browser** | @anthropic-ai/server-puppeteer | Screenshot, test UI |
-| **Web Fetch** | @anthropic-ai/server-fetch | Test APIs, check responses |
-| **File System** | @modelcontextprotocol/server-filesystem | Controlled file access |
-| **Memory** | @modelcontextprotocol/server-memory | Knowledge graph |
 
 ### Setup
 
@@ -122,19 +91,6 @@ hermes mcp test postgres
 
 Hooks = **auto-quality enforcement** tanpa user intervention.
 
-### 8 Hook Types
-
-| Hook | Kapan Fire | Contoh |
-|------|-----------|--------|
-| `UserPromptSubmit` | Sebelum proses prompt | Input validation |
-| `PreToolUse` | Sebelum tool jalan | Block dangerous commands |
-| `PostToolUse` | Setelah tool selesai | Auto-format, auto-lint |
-| `Notification` | Saat permission request | Desktop alerts |
-| `Stop` | Saat selesai respond | Auto-commit, logging |
-| `SubagentStop` | Saat subagent selesai | Orchestration |
-| `PreCompact` | Sebelum compress | Backup session |
-| `SessionStart` | Saat session mulai | Load dev context |
-
 ### Setup
 
 ```json
@@ -150,335 +106,261 @@ Hooks = **auto-quality enforcement** tanpa user intervention.
 }
 ```
 
-### Exit Codes
-
-| Exit | Meaning |
-|------|---------|
-| 0 | Pass, continue |
-| 1 | Warn, continue |
-| 2 | BLOCK, stop execution |
-
 ---
 
 ## PILAR 4: Skills — Reusable Procedures
 
 Skills = **prosedur yang dipakai ulang** tanpa re-explain setiap session.
 
-### Skills vs Context Files
-
-| Aspect | Context Files | Skills |
-|--------|--------------|--------|
-| When loaded | Every session | On-demand |
-| Size | < 200 lines | Can be detailed |
-| Scope | Project-wide rules | Specific workflow |
-
 ### 6 Essential Project Skills
 
-1. **add-api-endpoint** — Standard workflow untuk tambah endpoint
+1. **add-api-endpoint** — Standard workflow tambah endpoint
 2. **database-migration** — Cara buat/test/rollback migration
 3. **add-feature** — Full feature development workflow
 4. **debug-issue** — Systematic debugging procedure
 5. **code-review** — Review checklist & output format
 6. **deploy** — Pre-deploy, deploy, post-deploy steps
 
-### Creating Skills
-
-```markdown
-# .claude/skills/{skill-name}.md
-
-## Trigger
-"When asked to..."
-
-## Steps
-1. First step
-2. Second step
-3. ...
-
-## Rules
-- Rule 1
-- Rule 2
-```
-
 ---
 
 ## PILAR 5: Goal-Oriented Prompting — Clear Success Criteria
 
-Goal-Oriented Prompting adalah cara memberi task ke agent dengan **clear success criteria** sehingga agent bisa **self-correct** tanpa user intervention.
+### Formula
 
-### Kenapa Goal-Oriented Prompting Penting?
+```
+GOAL = SITUATION + WHAT + WHERE + VERIFY
+```
+
+### Before/After
+
+```
+❌ "Fix the login bug"
+
+✅ "Users report login fails after session timeout.
+    Check src/auth/, especially token refresh logic.
+    Write a failing test that reproduces the issue,
+    then fix the root cause. Verify: run `make test`
+    and ensure all auth tests pass."
+```
+
+### 4 Level of Verification
+
+| Level | Cara | Kapan Pakai |
+|-------|------|-------------|
+| Prompt | "Run tests after implementing" | Task sederhana |
+| Goal | `/goal` condition | Task kompleks |
+| Hook | Stop hook blocks until pass | Autonomous runs |
+| Adversarial | Verification subagent | Critical changes |
+
+---
+
+## PILAR 6: Context Window Management — Keep Agent Sharp
+
+Context window adalah **sumber daya paling penting** yang harus dikelola. Performance agent **DROPS** saat context > 70% full.
+
+### Kenapa Context Window Penting?
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    VAGUE PROMPT                             │
-├─────────────────────────────────────────────────────────────┤
-│  User: "Fix the login bug"                                  │
-│  Agent: *looks at login code*                               │
-│  Agent: *adds try-catch around everything*                  │
-│  Agent: "Fixed!"                                            │
-│  User: "That's not a fix, that's just hiding the error"     │
-│  Agent: *adds more try-catch*                               │
-│  User: "No, find the ROOT CAUSE"                            │
-│  Agent: *finally investigates properly*                     │
-│  → 3 rounds of correction karena tidak ada success criteria │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                    GOAL-ORIENTED PROMPT                     │
-├─────────────────────────────────────────────────────────────┤
-│  User: "Users report login fails after session timeout.     │
-│         Check src/auth/, especially token refresh.          │
-│         Write a failing test that reproduces the issue,     │
-│         then fix it. Verify: run `make test` and ensure     │
-│         all auth tests pass."                               │
-│                                                             │
-│  Agent: *reads src/auth/token_refresh.py*                   │
-│  Agent: *finds race condition in token refresh*             │
-│  Agent: *writes failing test*                               │
-│  Agent: *fixes the race condition*                          │
-│  Agent: *runs `make test` — all pass*                       │
-│  Agent: "Fixed. Root cause was race condition in            │
-│          token refresh. Test added. All 47 auth tests pass."│
-│  → Zero correction rounds                                   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### The Formula
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  GOAL = SITUATION + WHAT + WHERE + VERIFY                   │
+│                    CONTEXT WINDOW                           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  SITUATION  → Context/masalah yang terjadi                  │
-│  WHAT       → Apa yang harus dilakukan                      │
-│  WHERE      → Di mana harus look/code                       │
-│  VERIFY     → Bagaimana cara tahu sudah selesai             │
+│  ┌─────────────────────────────────────────────┐            │
+│  │ CLAUDE.md / AGENTS.md (startup context)     │ ← Always   │
+│  ├─────────────────────────────────────────────┤            │
+│  │ SOUL.md (agent identity)                    │ ← Always   │
+│  ├─────────────────────────────────────────────┤            │
+│  │ Conversation history                        │ ← Growing  │
+│  ├─────────────────────────────────────────────┤            │
+│  │ File reads                                  │ ← Growing  │
+│  ├─────────────────────────────────────────────┤            │
+│  │ Command outputs                             │ ← Growing  │
+│  ├─────────────────────────────────────────────┤            │
+│  │ Tool results                                │ ← Growing  │
+│  ├─────────────────────────────────────────────┤            │
+│  │ Subagent summaries                          │ ← Growing  │
+│  ├─────────────────────────────────────────────┤            │
+│  │                                             │            │
+│  │         AVAILABLE SPACE                     │ ← Shrinking│
+│  │                                             │            │
+│  └─────────────────────────────────────────────┘            │
+│                                                             │
+│  Saat AVAILABLE SPACE mengecil → quality DROPS              │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Before/After Examples
+### Thresholds
 
-#### Bug Fix
+| Usage | Status | Action |
+|-------|--------|--------|
+| < 70% | ✅ Normal | Full precision, no action needed |
+| 70-85% | ⚠️ Warning | Consider `/compact` or start new session |
+| > 85% | 🔴 Danger | Hallucination risk spikes, MUST take action |
 
-```
-❌ Vague: "Fix the auth bug"
+### Token Cost Reference
 
-✅ Goal-Oriented:
-"Users report login fails after session timeout.
-Check src/auth/, especially token refresh logic.
-Write a failing test that reproduces the issue,
-then fix the root cause. Verify: run `make test`
-and ensure all auth tests pass."
-```
+| Action | Approximate Tokens |
+|--------|-------------------|
+| CLAUDE.md startup | 1,000-3,000 |
+| SOUL.md startup | 500-1,500 |
+| Reading a file | 200-2,000 per file |
+| Command output | 100-5,000 per command |
+| One conversation turn | 500-2,000 |
+| Subagent summary | 500-3,000 |
 
-#### New Feature
+### 5 Strategies for Context Management
 
-```
-❌ Vague: "Add user profile page"
-
-✅ Goal-Oriented:
-"Add a user profile page at /profile.
-Look at src/pages/dashboard.tsx for the pattern.
-Include: avatar, name, email, edit button.
-Must be responsive (mobile-first).
-Verify: take screenshot on mobile viewport,
-compare with design at docs/figma/profile.png."
-```
-
-#### Refactor
-
-```
-❌ Vague: "Refactor the database layer"
-
-✅ Goal-Oriented:
-"The database layer in src/db/ uses raw SQL everywhere.
-Refactor to use the repository pattern (see src/db/users.py for example).
-Keep all existing tests passing — don't change public API.
-Verify: run `make test` (0 failures), then `make lint` (0 warnings)."
-```
-
-#### Performance
-
-```
-❌ Vague: "Make the API faster"
-
-✅ Goal-Oriented:
-"The /api/endpoint takes 3s (profile: see logs/perf.json).
-Target: < 500ms p95.
-Likely cause: N+1 query in src/api/handlers/users.py.
-Verify: run `wrk -t4 -c100 -d10s http://localhost:8000/api/endpoint`
-and confirm p95 < 500ms."
-```
-
-#### Code Review
-
-```
-❌ Vague: "Review this PR"
-
-✅ Goal-Oriented:
-"Review PR #42 for security issues and performance.
-Focus on: SQL injection, auth bypass, N+1 queries.
-Check: src/api/ (new endpoints), src/auth/ (changed logic).
-Output: list of issues with severity (critical/warning/info)
-and specific line references."
-```
-
-### Goal-Oriented Prompting in Context Files
-
-Tambahkan goal-oriented prompting rules ke AGENTS.md atau CLAUDE.md:
-
-```markdown
-## How to Work on Tasks
-
-When given a task, always:
-1. Understand the SITUATION (what's the problem/context?)
-2. Identify the WHAT (what needs to be done?)
-3. Find the WHERE (where to look/code?)
-4. Define the VERIFY (how to confirm it's done?)
-
-If the user's request is vague, ask for clarification on missing parts.
-Never assume — ask when uncertain.
-
-## Verification Rules
-- Always run tests after changes
-- Show evidence of completion (test output, screenshots, command results)
-- Don't claim "done" without verification
-```
-
-### Level of Verification
-
-| Level | Cara | Kapan Pakai | Token Cost |
-|-------|------|-------------|------------|
-| **Prompt** | "Run tests after implementing" | Task sederhana | Rendah |
-| **Goal** | Set check as /goal condition | Task kompleks | Sedang |
-| **Hook** | Stop hook blocks until check passes | Autonomous runs | Rendah |
-| **Adversarial** | Verification subagent checks work | Critical changes | Tinggi |
-
-### Prompt-Level Verification (Simplest)
-
-```
-Write a validateEmail function.
-Test cases: user@example.com → true, invalid → false, user@.com → false.
-Run the tests after implementing.
-```
-
-Agent runs tests, sees results, iterates until pass.
-
-### Goal-Level Verification (Persistent)
+#### Strategy 1: Compact — Compress When Needed
 
 ```bash
 # Claude Code
-/goal All auth tests pass and login bug is fixed
+/compact                          # Auto-compress
+/compact focus on auth logic      # Compress with focus
 
 # Hermes
-/goal API response time < 500ms p95
+/compress                         # Auto-compress
 ```
 
-Goal persists across turns. Agent keeps working until goal is achieved.
+**When:** Context > 70%, agent starts "forgetting" things
+**Impact:** Saves 30-50% context, but may lose some details
+**Risk:** Important rules in conversation may be lost
 
-### Hook-Level Verification (Automated)
-
-```json
-{
-  "hooks": {
-    "Stop": [{
-      "hooks": [{
-        "type": "command",
-        "command": "make test || exit 2"
-      }]
-    }]
-  }
-}
-```
-
-Agent CANNOT finish until tests pass. Fully autonomous.
-
-### Adversarial Verification (Most Thorough)
-
-```markdown
-# .claude/agents/verifier.md
----
-name: verifier
-description: Verifies work done by other agents
-tools: [Read, Bash]
----
-You are a skeptical code reviewer.
-Your job is to find problems in the code.
-Don't trust the author's claims — verify everything.
-Run the tests yourself. Check edge cases.
-If you find a problem, report it with evidence.
-```
+#### Strategy 2: Split — New Session for New Task
 
 ```
-Use @verifier to check the auth module changes.
+Session 1: "Fix the login bug"    → 40% context used
+Session 2: "Add user profile"     → Fresh 0% context
+Session 3: "Refactor database"    → Fresh 0% context
 ```
 
-Second agent with fresh context reviews the work.
+**When:** Task is done, starting a different task
+**Impact:** Each task gets full context precision
+**Rule:** Don't campur debug + feature + refactor in one session
 
-### Goal-Oriented Prompting Patterns
-
-#### Pattern 1: Explore → Plan → Code → Verify
-
-```
-Phase 1 (Explore): "Read src/auth/ and understand the session flow"
-Phase 2 (Plan): "Create a plan for adding JWT refresh tokens"
-Phase 3 (Code): "Implement the refresh token flow from your plan"
-Phase 4 (Verify): "Run tests, fix failures, confirm all pass"
-```
-
-#### Pattern 2: Failing Test First (TDD)
-
-```
-"Write a failing test for the login timeout bug.
-Don't fix the bug yet — just the test.
-Run it to confirm it fails.
-Then fix the code so the test passes."
-```
-
-#### Pattern 3: Screenshot Comparison (UI)
-
-```
-"[paste screenshot] Implement this design.
-Take a screenshot of the result.
-Compare with the original.
-List differences and fix them."
-```
-
-#### Pattern 4: Incremental Verification
-
-```
-"Add the user model. Run tests."
-"Add the user API. Run tests."
-"Add the user frontend. Run tests."
-"Connect frontend to API. Run tests."
-```
-
-Each step verified before moving on.
-
-### Auto-Detect: Which Prompting Pattern for This Task?
+#### Strategy 3: Delegate — Subagents for Investigation
 
 ```python
-def select_pattern(task_type):
-    if task_type == "bug_fix":
-        return "Failing test first → Fix → Verify all tests pass"
-    elif task_type == "new_feature":
-        return "Explore → Plan → Code → Verify"
-    elif task_type == "ui_change":
-        return "Screenshot comparison"
-    elif task_type == "refactor":
-        return "Keep all tests passing throughout"
-    elif task_type == "performance":
-        return "Benchmark before → Optimize → Benchmark after"
-    else:
-        return "Explore → Plan → Code → Verify"
+# Hermes
+delegate_task(goal="Investigate the auth module and find the bug")
+
+# Claude Code
+@security-reviewer review the auth module
+```
+
+**When:** Need to explore codebase without polluting main context
+**Impact:** Subagent gets fresh context, returns only summary
+**Rule:** Use for investigation, not implementation
+
+#### Strategy 4: Scope — Path-Scoped Rules
+
+```
+.claude/rules/
+├── frontend.md      # Only loads when editing frontend files
+├── api.md           # Only loads when editing API files
+├── database.md      # Only loads when editing DB files
+└── testing.md       # Only loads when editing test files
+```
+
+**When:** Project has domain-specific rules
+**Impact:** Only relevant rules load, saving context
+**Rule:** Don't put critical global rules here
+
+#### Strategy 5: Pipe — Input via Stdin
+
+```bash
+# Instead of having agent read a file:
+cat large_file.py | claude -p "Analyze this code"
+
+# Instead of having agent run command:
+git diff HEAD~3 | claude -p "Summarize these changes"
+```
+
+**When:** You know exactly what content agent needs
+**Impact:** Content goes directly to analysis, no intermediate steps
+**Rule:** Use for known content, not exploration
+
+### Context Window in Practice
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  TYPICAL SESSION LIFECYCLE                                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Turn 1-5:   Context 10-30%  → Agent is SHARP              │
+│  Turn 6-10:  Context 30-50%  → Agent is GOOD               │
+│  Turn 11-15: Context 50-70%  → Agent is OK                 │
+│  Turn 16-20: Context 70-85%  → Agent STARTS FORGETTING     │
+│  Turn 21+:   Context > 85%   → Agent MAKES MISTAKES        │
+│                                                             │
+│  SOLUTION: Compact at 70%, or start new session             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Context Window Rules in Context Files
+
+Tambahkan ke AGENTS.md atau CLAUDE.md:
+
+```markdown
+## Context Management Rules
+
+- When context is getting full, proactively use /compact
+- Start a new session for unrelated tasks
+- Use subagents for codebase investigation
+- Keep file reads focused — don't read entire codebase
+- Show evidence (test output, screenshots) instead of describing
+```
+
+### Monitoring Context Usage
+
+**Claude Code:**
+```bash
+# In interactive session
+/context          # Visual grid of context usage
+/cost             # Token usage breakdown
+```
+
+**Hermes:**
+```bash
+# In interactive session
+/usage            # Token usage
+/insights         # Usage analytics
+```
+
+### Context-Efficient Prompting
+
+```
+❌ Context-WASTING prompt:
+"Read all the files in src/ and understand the architecture,
+then look at every test file, then check the CI config,
+then look at the Docker setup, then tell me what you think
+about the codebase quality."
+
+✅ Context-EFFICIENT prompt:
+"Look at src/api/router.py and src/api/handlers/ to understand
+the API pattern. Then check tests/api/ for test patterns.
+Tell me: is the router following REST conventions?"
+```
+
+### Auto-Detect: Context Management Needs
+
+```python
+# Large project = more context management needed
+if count_files("src/**/*.py") > 100:
+    rules.append("Use path-scoped rules for domain-specific instructions")
+    rules.append("Use subagents for codebase investigation")
+    rules.append("Start new sessions for unrelated tasks")
+
+# Monorepo = definitely need path-scoped rules
+if has_file("packages/") or has_file("apps/"):
+    rules.append("Create .claude/rules/ for each package")
+    rules.append("Use claudeMdExcludes to skip other teams' CLAUDE.md")
 ```
 
 ---
 
 ## Context File Ecosystem
-
-### Files by Agent Compatibility
 
 | File | Agents | Scope |
 |------|--------|-------|
@@ -516,8 +398,13 @@ When given a task:
 2. Identify the WHAT
 3. Find the WHERE
 4. Define the VERIFY
+Always run tests after changes.
 
-Always run tests after changes. Show evidence of completion.
+## Context Management (PILAR 6)
+- When context > 70%, use /compact
+- Start new session for unrelated tasks
+- Use subagents for investigation
+- Keep file reads focused
 
 ## Common Gotchas
 - {non-obvious behaviors}
@@ -564,22 +451,21 @@ ls src/api/ routes/ alembic/ migrations/ .github/workflows/ 2>/dev/null
 
 ### Step 5: Add Goal-Oriented Prompting Rules (PILAR 5)
 
-Tambahkan ke AGENTS.md:
-```markdown
-## How to Work on Tasks
-When given a task:
-1. Understand the SITUATION
-2. Identify the WHAT
-3. Find the WHERE
-4. Define the VERIFY
-Always run tests after changes.
-```
+Tambahkan SITUATION + WHAT + WHERE + VERIFY rules ke AGENTS.md.
 
-### Step 6: Generate Context Files
+### Step 6: Add Context Management Rules (PILAR 6)
+
+Tambahkan context management rules ke AGENTS.md:
+- Compact at 70%
+- New session for new task
+- Subagents for investigation
+- Path-scoped rules for monorepo
+
+### Step 7: Generate Context Files
 
 Fill templates with REAL data.
 
-### Step 7: Verify
+### Step 8: Verify
 
 - Files under 200 lines
 - Build/test commands work
@@ -587,14 +473,15 @@ Fill templates with REAL data.
 - Hooks execute
 - Skills load
 - Goal-oriented rules included
+- Context management rules included
 
 ---
 
-## How 5 PILAR Bekerja Bersama
+## How 6 PILAR Bekerja Bersama
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Agent + 5 PILAR = FULLY AUTONOMOUS                         │
+│  Agent + 6 PILAR = FULLY AUTONOMOUS                         │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  PILAR 1: SOUL.md        → Agent TAHU siapa dirinya        │
@@ -602,27 +489,30 @@ Fill templates with REAL data.
 │  PILAR 3: Hooks          → Agent AUTO-jaga kualitas         │
 │  PILAR 4: Skills         → Agent TAHU cara kerja            │
 │  PILAR 5: Goal Prompting → Agent TAHU kapan selesai         │
+│  PILAR 6: Context Mgmt   → Agent TETAP SHARP                │
 │                                                             │
 │  Context Files (AGENTS.md, CLAUDE.md)                       │
 │            → Agent TAHU projectnya                          │
 │                                                             │
 │  Result:                                                    │
 │  ┌─────────────────────────────────────────────┐            │
-│  │ User: "Users report login fails after timeout"           │
-│  │ Agent: *understands SITUATION (PILAR 5)*     │            │
-│  │ Agent: *loads debug skill (PILAR 4)*         │            │
-│  │ Agent: *follows SOUL.md style (PILAR 1)*     │            │
-│  │ Agent: *queries DB via MCP (PILAR 2)*        │            │
-│  │ Agent: *writes failing test*                            │
-│  │ Agent: *fixes root cause*                               │
-│  │ Hook: *auto-lints (PILAR 3)*                 │            │
-│  │ Agent: *runs tests — all pass (VERIFY)*       │            │
-│  │ Agent: "Fixed. Race condition in token        │            │
-│  │         refresh. Test added. 47/47 pass."     │            │
-│  │ User: *reviews PR*                                      │
+│  │ Session 1: Fix login bug                     │            │
+│  │   Agent: *loads debug skill (PILAR 4)*       │            │
+│  │   Agent: *follows SOUL.md style (PILAR 1)*   │            │
+│  │   Agent: *queries DB via MCP (PILAR 2)*      │            │
+│  │   Agent: *writes test, fixes code*           │            │
+│  │   Hook: *auto-lints (PILAR 3)*               │            │
+│  │   Agent: *runs tests (PILAR 5 VERIFY)*       │            │
+│  │   Context: 45% — still sharp (PILAR 6)       │            │
+│  │   Agent: "Done. All tests pass."             │            │
+│  │                                              │            │
+│  │ Session 2: Add user profile (FRESH)          │            │
+│  │   Agent: *full context precision*            │            │
+│  │   Agent: *loads add-feature skill*           │            │
+│  │   ...                                        │            │
 │  └─────────────────────────────────────────────┘            │
 │                                                             │
-│  User = reviewer, bukan babysitter                          │
+│  Each session = fresh context, full precision               │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -637,8 +527,9 @@ Fill templates with REAL data.
 3. **Hooks (PILAR 3)** — Auto-quality
 4. **Skills (PILAR 4)** — Reusable procedures
 5. **Goal-Oriented Prompting (PILAR 5)** — Clear success criteria
-6. **Build/test commands**
-7. **Code style rules that DIFFER from defaults**
+6. **Context Window Management (PILAR 6)** — Keep agent sharp
+7. **Build/test commands**
+8. **Code style rules that DIFFER from defaults**
 
 ### NEVER Include
 - ✗ Standard language conventions
@@ -662,8 +553,8 @@ hermes skills install zufarrizal/new-project-ai-context
 3. **No hooks = user jadi babysitter**
 4. **No skills = repeatable tasks need re-explaining**
 5. **No goal-oriented prompting = agent doesn't know when it's done**
-6. **Vague prompts = multiple correction rounds**
-7. **No verification = agent claims "done" without evidence**
+6. **No context management = agent degrades over time**
+7. **Context > 85% = hallucination risk**
 8. **Bloated context files REDUCE adherence** — Keep < 200 lines
 9. **SOUL.md di wrong location** — Must be global
-10. **`/compact` can lose context**
+10. **`/compact` can lose context** — Important rules in context files, not conversation
