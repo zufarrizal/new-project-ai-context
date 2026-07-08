@@ -1,13 +1,13 @@
 ---
 name: project-context-setup
-description: "Set up AI context files for new projects across all coding agents (Hermes, Claude Code, Cursor, Codex). Maximizes AI output quality through structured context. Includes PILAR 1: SOUL.md agent identity, PILAR 2: MCP Servers external tools."
-version: 1.2.0
+description: "Set up AI context files for new projects across all coding agents (Hermes, Claude Code, Cursor, Codex). Maximizes AI output quality through structured context. Includes PILAR 1: SOUL.md, PILAR 2: MCP Servers, PILAR 3: Hooks."
+version: 1.3.0
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [ai-context, project-setup, claude-md, agents-md, cursorrules, soul-md, mcp-servers, coding-agents]
+    tags: [ai-context, project-setup, claude-md, agents-md, cursorrules, soul-md, mcp-servers, hooks, coding-agents]
     related_skills: [hermes-agent, claude-code, codex, opencode]
 ---
 
@@ -371,9 +371,225 @@ const transport = new StdioServerTransport();
 server.connect(transport);
 ```
 
-```bash
-# Register it
-claude mcp add myapi -- node my-mcp-server.js
+---
+
+## PILAR 3: Hooks — Automation on Events
+
+Hooks adalah **otomatisasi yang berjalan tanpa user intervention**. Agent punya "guard rails" dan "auto-pilot" yang memastikan kualitas kode secara konsisten.
+
+### Kenapa Hooks Penting?
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    WITHOUT HOOKS                            │
+├─────────────────────────────────────────────────────────────┤
+│  Agent: *writes code*                                       │
+│  User: "Run the linter"                                     │
+│  Agent: *runs linter, finds issues*                         │
+│  Agent: *fixes issues*                                      │
+│  User: "Run it again"                                       │
+│  Agent: *runs linter, passes*                               │
+│  User: "Now run tests"                                      │
+│  Agent: *runs tests, finds failures*                        │
+│  → User jadi babysitter, bukan reviewer                     │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    WITH HOOKS                               │
+├─────────────────────────────────────────────────────────────┤
+│  Agent: *writes code*                                       │
+│  Hook (PostToolUse): *auto-runs linter, fixes issues*       │
+│  Hook (PostToolUse): *auto-runs tests*                      │
+│  Agent: "Code written, linted, and tested. All passing."    │
+│  User: *reviews final result*                               │
+│  → User jadi reviewer, bukan babysitter                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 8 Hook Types
+
+| Hook | Kapan Fire | Contoh Penggunaan |
+|------|-----------|-------------------|
+| `UserPromptSubmit` | Sebelum proses prompt | Input validation, logging, context injection |
+| `PreToolUse` | Sebelum tool jalan | Security gates, block dangerous commands |
+| `PostToolUse` | Setelah tool selesai | Auto-format, run linters, auto-test |
+| `Notification` | Saat permission request | Desktop notifications, Slack alerts |
+| `Stop` | Saat agent selesai respond | Completion logging, auto-commit |
+| `SubagentStop` | Saat subagent selesai | Agent orchestration, result aggregation |
+| `PreCompact` | Sebelum context di-compress | Backup session, save state |
+| `SessionStart` | Saat session mulai | Load dev context, check environment |
+
+### Setup: Claude Code
+
+Hooks dikonfigurasi di `.claude/settings.json` (project) atau `~/.claude/settings.json` (global).
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.py)",
+        "hooks": [
+          {"type": "command", "command": "ruff check --fix $CLAUDE_FILE_PATHS"}
+        ]
+      },
+      {
+        "matcher": "Write(*.ts)",
+        "hooks": [
+          {"type": "command", "command": "npx prettier --write $CLAUDE_FILE_PATHS"}
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'rm -rf|git push.*--force|DROP TABLE'; then echo 'BLOCKED: Dangerous command!' && exit 2; fi"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {"type": "command", "command": "echo \"[$(date)] Task completed\" >> ~/.claude/activity.log"}
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {"type": "command", "command": "notify-send 'Claude Code' 'Waiting for your input'"}
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Setup: Hermes
+
+Hooks di Hermes menggunakan config.yaml:
+
+```yaml
+# ~/.hermes/config.yaml
+hooks:
+  post_tool_use:
+    - matcher: "write_file(*.py)"
+      command: "ruff check --fix {file_path}"
+    - matcher: "write_file(*.ts)"
+      command: "npx prettier --write {file_path}"
+  pre_tool_use:
+    - matcher: "terminal"
+      command: "echo '{input}' | grep -qE 'rm -rf|DROP TABLE' && exit 1 || exit 0"
+  stop:
+    - command: "echo '[$(date)] Task completed' >> ~/.hermes/activity.log"
+```
+
+### Hook Environment Variables
+
+| Variable | Content |
+|----------|---------|
+| `CLAUDE_PROJECT_DIR` | Current project path |
+| `CLAUDE_FILE_PATHS` | Files being modified |
+| `CLAUDE_TOOL_INPUT` | Tool parameters as JSON |
+
+### Auto-Detect: Which Hooks Does This Project Need?
+
+```python
+# Detection logic
+hooks_needed = []
+
+# Linting
+if has_file("pyproject.toml") and grep("ruff", "pyproject.toml"):
+    hooks_needed.append({"matcher": "Write(*.py)", "command": "ruff check --fix {files}"})
+
+if has_file(".eslintrc") or has_file("eslint.config.js"):
+    hooks_needed.append({"matcher": "Write(*.ts)", "command": "npx eslint --fix {files}"})
+
+if has_file(".prettierrc"):
+    hooks_needed.append({"matcher": "Write(*.ts)", "command": "npx prettier --write {files}"})
+
+# Testing
+if has_file("pytest.ini") or has_file("pyproject.toml") and grep("pytest", "pyproject.toml"):
+    hooks_needed.append({"matcher": "Write(*.py)", "command": "pytest --tb=short -q"})
+
+if has_file("jest.config.js") or has_file("vitest.config.ts"):
+    hooks_needed.append({"matcher": "Write(*.test.ts)", "command": "npx vitest run {file}"})
+
+# Security
+if has_file(".env"):
+    hooks_needed.append({"matcher": "Bash", "command": "grep -q 'SECRET\\|KEY\\|PASSWORD' {input} && exit 1 || exit 0"})
+```
+
+### Security Hook Patterns
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; cmd=json.load(sys.stdin).get('command',''); dangerous=['rm -rf','git push --force','chmod 777','curl|sh','wget|sh','DROP TABLE','DELETE FROM']; [print('BLOCKED:',d) or sys.exit(2) for d in dangerous if d in cmd]\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Hook Execution Rules
+
+| Rule | Detail |
+|------|--------|
+| Exit 0 | Hook passed, continue |
+| Exit 1 | Hook failed, log warning, continue |
+| Exit 2 | Hook BLOCKS the action, stop execution |
+| Timeout | 60 seconds default, hook killed after |
+| Output | stdout/stderr shown to agent |
+
+### Hook Examples by Project Type
+
+**Python Project:**
+```json
+{
+  "PostToolUse": [
+    {"matcher": "Write(*.py)", "hooks": [{"type": "command", "command": "ruff check --fix $CLAUDE_FILE_PATHS && mypy $CLAUDE_FILE_PATHS"}]}
+  ]
+}
+```
+
+**TypeScript Project:**
+```json
+{
+  "PostToolUse": [
+    {"matcher": "Write(*.ts)", "hooks": [{"type": "command", "command": "npx prettier --write $CLAUDE_FILE_PATHS && npx eslint --fix $CLAUDE_FILE_PATHS"}]}
+  ]
+}
+```
+
+**Go Project:**
+```json
+{
+  "PostToolUse": [
+    {"matcher": "Write(*.go)", "hooks": [{"type": "command", "command": "gofmt -w $CLAUDE_FILE_PATHS && go vet ./..."}]}
+  ]
+}
+```
+
+**Rust Project:**
+```json
+{
+  "PostToolUse": [
+    {"matcher": "Write(*.rs)", "hooks": [{"type": "command", "command": "cargo fmt -- $CLAUDE_FILE_PATHS && cargo clippy -- -D warnings"}]}
+  ]
+}
 ```
 
 ---
@@ -500,8 +716,6 @@ ls CLAUDE.md AGENTS.md .hermes.md .cursorrules .claude/ .cursor/ 2>/dev/null
 
 ### Step 3: Setup MCP Servers (PILAR 2)
 
-Deteksi kebutuhan MCP dari project files:
-
 ```bash
 # Check docker-compose for databases
 grep -l "postgres\|mysql\|mongo" docker-compose.yml 2>/dev/null
@@ -511,47 +725,71 @@ ls .github/ 2>/dev/null
 
 # Check for browser testing
 ls playwright.config.* cypress.config.* 2>/dev/null
-
-# Check for API clients
-grep -l "axios\|requests\|fetch" package.json requirements.txt 2>/dev/null
 ```
 
-Setup MCP yang relevan:
+Setup MCP yang relevan.
+
+### Step 4: Setup Hooks (PILAR 3)
+
+Deteksi linter/formatter dari project:
 
 ```bash
-# Claude Code
-claude mcp add <name> -- npx <package> [args]
+# Python
+grep -l "ruff\|black\|flake8\|mypy" pyproject.toml setup.cfg .flake8 2>/dev/null
 
-# Hermes
-hermes mcp add <name> --url <url> atau --command "<cmd>"
+# JavaScript/TypeScript
+ls .eslintrc* .prettierrc* eslint.config.* prettier.config.* 2>/dev/null
+
+# Go
+ls .golangci.yml 2>/dev/null
+
+# Rust
+ls rustfmt.toml clippy.toml 2>/dev/null
 ```
 
-### Step 4: Generate Context Files
+Generate `.claude/settings.json` dengan hooks yang relevan.
+
+### Step 5: Generate Context Files
 
 Fill templates with REAL data from project. Order: AGENTS.md → CLAUDE.md → .hermes.md
 
-### Step 5: Verify
+### Step 6: Verify
 
 - Files under 200 lines each
 - Build/test commands actually work
-- MCP servers connect successfully (`hermes mcp test <name>`)
+- MCP servers connect successfully
+- Hooks execute without errors
 - No contradictions between files
 
 ---
 
-## How PILAR 2 Makes Everything Work
+## How 3 PILAR Bekerja Bersama
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Agent + Context Files + MCP Servers                        │
+│  Agent + 3 PILAR = FULLY AUTONOMOUS                         │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  SOUL.md (PILAR 1)     → Agent TAHU siapa dirinya          │
-│  AGENTS.md/CLAUDE.md   → Agent TAHU projectnya             │
-│  MCP Servers (PILAR 2) → Agent BISA aksi langsung           │
+│  PILAR 1: SOUL.md        → Agent TAHU siapa dirinya        │
+│  PILAR 2: MCP Servers    → Agent BISA aksi langsung         │
+│  PILAR 3: Hooks          → Agent AUTO-jaga kualitas         │
 │                                                             │
-│  Result: Agent bisa → explore → plan → code → VERIFY        │
-│          tanpa minta user jalankan commands                  │
+│  Context Files (AGENTS.md, CLAUDE.md)                       │
+│            → Agent TAHU projectnya                          │
+│                                                             │
+│  Result:                                                    │
+│  ┌─────────────────────────────────────────────┐            │
+│  │ User: "Build feature X"                      │            │
+│  │ Agent: *plans based on SOUL.md personality*  │            │
+│  │ Agent: *codes based on AGENTS.md rules*      │            │
+│  │ Hook: *auto-lints, auto-formats*             │            │
+│  │ Agent: *tests via MCP database*              │            │
+│  │ Hook: *auto-runs test suite*                 │            │
+│  │ Agent: "Done. All tests passing. PR ready."  │            │
+│  │ User: *reviews PR*                           │            │
+│  └─────────────────────────────────────────────┘            │
+│                                                             │
+│  User = reviewer, bukan babysitter                          │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -563,50 +801,20 @@ Fill templates with REAL data from project. Order: AGENTS.md → CLAUDE.md → .
 ### Tier 1 — Highest Impact (always include)
 1. **SOUL.md (PILAR 1)** — Agent identity foundation
 2. **MCP Servers (PILAR 2)** — Agent can verify its own work
-3. **Build/test commands** — Agent can't guess these
-4. **Verification commands** — Enables self-correcting loops
-5. **Code style rules that DIFFER from defaults**
-6. **Architecture decisions** specific to project
-7. **Common gotchas** and non-obvious behaviors
+3. **Hooks (PILAR 3)** — Auto-quality enforcement
+4. **Build/test commands** — Agent can't guess these
+5. **Verification commands** — Enables self-correcting loops
+6. **Code style rules that DIFFER from defaults**
 
 ### Tier 2 — High Impact (include when relevant)
-8. **Repo etiquette** — branch naming, PR conventions
-9. **Testing preferences** — test runner, coverage targets
-10. **Environment quirks** — required env vars
+7. **Repo etiquette** — branch naming, PR conventions
+8. **Testing preferences** — test runner, coverage targets
+9. **Environment quirks** — required env vars
 
 ### NEVER Include
 - ✗ Standard language conventions
 - ✗ Detailed API documentation (link instead)
 - ✗ Self-evident practices ("write clean code")
-- ✗ Info that changes frequently
-
----
-
-## Writing Effective Context
-
-### Size Rules
-- **< 200 lines** per context file (longer = agent ignores rules)
-- Each line: "Would removing this cause mistakes?" If not, cut it.
-
-### Specificity Rules
-- ✅ "Use 2-space indentation for JS/TS"
-- ❌ "Format code properly"
-- ✅ "Run `npm test` before committing"
-- ❌ "Test your changes"
-
----
-
-## Path-Scoped Rules (Most Underused Feature)
-
-```
-.claude/rules/
-├── frontend.md      # Only loads when editing frontend files
-├── api.md           # Only loads when editing API files
-├── database.md      # Only loads when editing DB files
-└── testing.md       # Only loads when editing test files
-```
-
-**#1 optimization for large projects** — keeps context window lean.
 
 ---
 
@@ -622,13 +830,13 @@ Or just tell your AI agent: "Setup AI context for this project"
 
 ## Pitfalls
 
-1. **No SOUL.md = inconsistent agent personality** — Always create SOUL.md first
-2. **No MCP = agent can't verify its own work** — Setup relevant MCP servers
-3. **Too many MCP servers = context bloat** — Only add what project needs
-4. **MCP without --strict-mcp-config in CI** — May load unwanted servers
-5. **Bloated context files REDUCE adherence** — Keep < 200 lines
-6. **Contradicting rules cause random behavior** — Review periodically
-7. **SOUL.md di wrong location** — Must be global (~/.hermes/SOUL.md), not project-level
-8. **Path-scoped rules are on-demand** — Don't put critical global rules there
-9. **`/compact` can lose context** — Important rules should be in context files
-10. **AGENTS.md only loads from cwd** — Root placement matters
+1. **No SOUL.md = inconsistent personality** — Always create SOUL.md first
+2. **No MCP = agent can't verify** — Setup relevant MCP servers
+3. **No hooks = user jadi babysitter** — Setup auto-quality hooks
+4. **Exit 2 in PreToolUse blocks action** — Use carefully
+5. **Hooks timeout = 60s** — Long-running hooks get killed
+6. **Bloated context files REDUCE adherence** — Keep < 200 lines
+7. **Contradicting rules confuse agent** — Review periodically
+8. **SOUL.md di wrong location** — Must be global, not project-level
+9. **Path-scoped rules are on-demand** — Don't put critical global rules there
+10. **`/compact` can lose context** — Important rules in context files, not conversation
