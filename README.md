@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧠 new-project-ai-context
+# new-project-ai-context
 
 ### 7 PILAR Framework for AI Agent Effectiveness
 
@@ -13,50 +13,45 @@
 
 ---
 
-## 🤔 Why This Exists
+## Why This Exists
 
 Every time you start a new project, AI coding agents begin with **zero context**. They don't know your build commands, your code style, your testing setup, or your project's gotchas.
+
+You end up explaining the same things **over and over**.
 
 This skill fixes that with the **7 PILAR Framework** — research-backed from Anthropic's internal data and community best practices.
 
 ---
 
-## 🏛️ The 7 PILAR Framework
+## The 7 PILAR Framework
 
-| PILAR | Nama | Fungsi | Agent... |
-|-------|------|--------|----------|
-| 1 | **SOUL.md** | Agent Identity | TAHU siapa dirinya |
-| 2 | **MCP Servers** | External Tools | BISA aksi langsung |
-| 3 | **Hooks** | Automation | AUTO-jaga kualitas |
-| 4 | **Skills** | Reusable Procedures | TAHU cara kerja |
-| 5 | **Goal Prompting** | Clear Success Criteria | TAHU kapan selesai |
-| 6 | **Context Mgmt** | Keep Agent Sharp | TETAP SHARP |
-| 7 | **Subagents** | Parallelism | BISA SCALE |
+| PILAR | Name | Function | Agent... |
+|-------|------|----------|----------|
+| 1 | **SOUL.md** | Agent Identity | KNOWS who it is |
+| 2 | **MCP Servers** | External Tools | CAN take action |
+| 3 | **Hooks** | Automation | AUTO-enforces quality |
+| 4 | **Skills** | Reusable Procedures | KNOWS the workflow |
+| 5 | **Goal Prompting** | Clear Success Criteria | KNOWS when done |
+| 6 | **Context Mgmt** | Keep Agent Sharp | STAYS SHARP |
+| 7 | **Subagents** | Parallelism | CAN SCALE |
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Agent + 7 PILAR = FULLY AUTONOMOUS                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  PILAR 1: SOUL.md        → Agent TAHU siapa dirinya        │
-│  PILAR 2: MCP Servers    → Agent BISA aksi langsung         │
-│  PILAR 3: Hooks          → Agent AUTO-jaga kualitas         │
-│  PILAR 4: Skills         → Agent TAHU cara kerja            │
-│  PILAR 5: Goal Prompting → Agent TAHU kapan selesai         │
-│  PILAR 6: Context Mgmt   → Agent TETAP SHARP                │
-│  PILAR 7: Subagents      → Agent BISA SCALE                 │
-│                                                             │
-│  Context Files (AGENTS.md, CLAUDE.md)                       │
-│            → Agent TAHU projectnya                          │
-│                                                             │
-│  User = reviewer, bukan babysitter                          │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+Agent + 7 PILAR = FULLY AUTONOMOUS
+
+PILAR 1: SOUL.md        -> Agent KNOWS who it is
+PILAR 2: MCP Servers    -> Agent CAN take action
+PILAR 3: Hooks          -> Agent AUTO-enforces quality
+PILAR 4: Skills         -> Agent KNOWS the workflow
+PILAR 5: Goal Prompting -> Agent KNOWS when done
+PILAR 6: Context Mgmt   -> Agent STAYS SHARP
+PILAR 7: Subagents      -> Agent CAN SCALE
+
+Result: User = reviewer, not babysitter
 ```
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### As a Hermes Skill
 ```bash
@@ -79,7 +74,7 @@ The agent will:
 
 ---
 
-## 📋 Each PILAR Explained
+## Each PILAR Explained
 
 ### PILAR 1: SOUL.md — Agent Identity
 
@@ -96,7 +91,7 @@ You are a senior backend engineer specializing in Python and Go APIs.
 - 90% test coverage minimum
 ```
 
-**Impact:** Agent punya karakter konsisten lintas session.
+**Impact:** Agent has consistent personality across sessions.
 
 ### PILAR 2: MCP Servers — External Tools
 
@@ -105,7 +100,7 @@ claude mcp add postgres -- npx @anthropic-ai/server-postgres --connection-string
 claude mcp add github -- npx @modelcontextprotocol/server-github
 ```
 
-**Impact:** Agent bisa verify sendiri hasilnya.
+**Impact:** Agent can verify its own work.
 
 ### PILAR 3: Hooks — Automation
 
@@ -117,7 +112,7 @@ claude mcp add github -- npx @modelcontextprotocol/server-github
 }
 ```
 
-**Impact:** Auto-quality enforcement tanpa user intervention.
+**Impact:** Auto-quality enforcement without user intervention.
 
 ### PILAR 4: Skills — Reusable Procedures
 
@@ -131,27 +126,27 @@ When asked to add a new API endpoint:
 5. Run `make test`
 ```
 
-**Impact:** Agent tidak reinvent the wheel.
+**Impact:** Agent doesn't reinvent the wheel.
 
 ### PILAR 5: Goal-Oriented Prompting
 
 ```
-❌ "Fix the login bug"
-✅ "Users report login fails after timeout. Check src/auth/token_refresh.py.
-    Write failing test, fix root cause. Verify: all auth tests pass."
+BAD: "Fix the login bug"
+GOOD: "Users report login fails after timeout. Check src/auth/token_refresh.py.
+       Write failing test, fix root cause. Verify: all auth tests pass."
 ```
 
-**Impact:** Agent bisa self-correct tanpa user intervention.
+**Impact:** Agent can self-correct without user intervention.
 
 ### PILAR 6: Context Window Management
 
 | Usage | Status | Action |
 |-------|--------|--------|
-| < 70% | ✅ Normal | No action |
-| 70-85% | ⚠️ Warning | `/compact` |
-| > 85% | 🔴 Danger | New session |
+| < 70% | OK | No action |
+| 70-85% | Warning | `/compact` |
+| > 85% | DANGER | New session |
 
-**Impact:** Agent tetap sharp sepanjang session.
+**Impact:** Agent stays sharp throughout session.
 
 ### PILAR 7: Subagents & Parallelism
 
@@ -167,7 +162,7 @@ delegate_task(tasks=[
 
 ---
 
-## 📁 Files Generated
+## Files Generated
 
 | File | Agent | Purpose |
 |------|-------|---------|
@@ -181,7 +176,7 @@ delegate_task(tasks=[
 
 ---
 
-## 🎯 The Science Behind It
+## The Science Behind It
 
 ### Context Window = Most Important Resource
 
@@ -195,20 +190,20 @@ The 7 PILAR framework addresses this:
 
 ---
 
-## 🤝 Compatible Agents
+## Compatible Agents
 
 | Agent | AGENTS.md | CLAUDE.md | SOUL.md | MCP | Hooks | Skills | Subagents |
 |-------|-----------|-----------|---------|-----|-------|--------|-----------|
-| **Hermes** | ✅ | ✅ Import | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Claude Code** | ✅ Import | ✅ | ✅ Global | ✅ | ✅ | ✅ | ✅ |
-| **Cursor** | — | ✅ | ✅ Global | — | — | — | — |
-| **Codex** | ✅ | ✅ | — | — | — | — | — |
+| **Hermes** | Yes | Import | Yes | Yes | Yes | Yes | Yes |
+| **Claude Code** | Import | Yes | Global | Yes | Yes | Yes | Yes |
+| **Cursor** | — | Yes | Global | — | — | — | — |
+| **Codex** | Yes | Yes | — | — | — | — | — |
 
 ---
 
-## 📖 Best Practices
+## Best Practices
 
-### DO ✅
+### DO
 - Create SOUL.md FIRST (PILAR 1)
 - Setup MCP for verification (PILAR 2)
 - Use hooks for auto-quality (PILAR 3)
@@ -219,10 +214,10 @@ The 7 PILAR framework addresses this:
 - Keep files under 200 lines
 - Check into git for team sharing
 
-### DON'T ❌
+### DON'T
 - Skip SOUL.md (inconsistent personality)
 - Skip MCP (agent can't verify)
-- Skip hooks (user jadi babysitter)
+- Skip hooks (user becomes babysitter)
 - Skip skills (repeat tasks need re-explaining)
 - Use vague prompts (multiple correction rounds)
 - Ignore context > 85% (hallucination risk)
@@ -230,7 +225,7 @@ The 7 PILAR framework addresses this:
 
 ---
 
-## 🛠️ Contributing
+## Contributing
 
 PRs welcome! Here's how:
 
@@ -248,16 +243,16 @@ PRs welcome! Here's how:
 
 ---
 
-## 📜 License
+## License
 
 MIT — use it however you want. See [LICENSE](LICENSE).
 
 ---
 
-## 🙏 Credits
+## Credits
 
 - [Anthropic](https://docs.anthropic.com) — Claude Code best practices research
-- [Hermes Agent](https://github.com/NousResearch/hermes-agent) — Skill system & context file hierarchy
+- [Hermes Agent](https://github.com/NousResearch/hermes-agent) — Skill system and context file hierarchy
 - [Awesome Cursor Rules](https://github.com/PatrickJS/awesome-cursorrules) — Cursor .mdc patterns
 - The AI coding community — for sharing what actually works
 
@@ -265,7 +260,7 @@ MIT — use it however you want. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**Made with 🧠 by [zufarrizal](https://github.com/zufarrizal)**
+**Made with by [zufarrizal](https://github.com/zufarrizal)**
 
 *7 PILAR Framework — Because every project deserves an AI agent that actually knows what it's doing.*
 
