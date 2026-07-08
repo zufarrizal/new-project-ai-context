@@ -1,13 +1,13 @@
 ---
 name: project-context-setup
-description: "Set up AI context files for new projects across all coding agents (Hermes, Claude Code, Cursor, Codex). Maximizes AI output quality through structured context. Includes PILAR 1: SOUL.md agent identity."
-version: 1.1.0
+description: "Set up AI context files for new projects across all coding agents (Hermes, Claude Code, Cursor, Codex). Maximizes AI output quality through structured context. Includes PILAR 1: SOUL.md agent identity, PILAR 2: MCP Servers external tools."
+version: 1.2.0
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [ai-context, project-setup, claude-md, agents-md, cursorrules, soul-md, coding-agents]
+    tags: [ai-context, project-setup, claude-md, agents-md, cursorrules, soul-md, mcp-servers, coding-agents]
     related_skills: [hermes-agent, claude-code, codex, opencode]
 ---
 
@@ -200,6 +200,184 @@ You are a senior data engineer specializing in Python data pipelines.
 
 ---
 
+## PILAR 2: MCP Servers — External Tools
+
+MCP (Model Context Protocol) Servers memberi agent akses ke tools external. Tanpa MCP, agent hanya bisa baca/tulis file dan jalankan shell commands. Dengan MCP, agent bisa **query database, kelola GitHub, test browser, akses API** — dan **verifikasi sendiri hasilnya**.
+
+### Kenapa MCP Servers Penting?
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    WITHOUT MCP                              │
+├─────────────────────────────────────────────────────────────┤
+│  User: "Check if the migration works"                       │
+│  Agent: "I can't access the database directly.              │
+│          Can you run this query and tell me the result?"    │
+│  User: *runs query manually, pastes result*                 │
+│  Agent: "Based on that, it looks like..."                   │
+│  → Agent jadi useless tanpa user intervention               │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    WITH MCP                                 │
+├─────────────────────────────────────────────────────────────┤
+│  User: "Check if the migration works"                       │
+│  Agent: *queries database directly*                         │
+│  Agent: "Migration successful. 3 tables created,            │
+│          152 rows migrated. No errors."                     │
+│  → Agent bisa verify sendiri, user tinggal review           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### MCP Servers by Use Case
+
+| Use Case | MCP Server | What Agent Can Do |
+|----------|------------|-------------------|
+| **Database** | PostgreSQL, MySQL, SQLite | Query data, check migrations, verify schemas |
+| **GitHub** | @modelcontextprotocol/server-github | Manage issues, PRs, search code, create releases |
+| **Browser Testing** | @anthropic-ai/server-puppeteer | Screenshot pages, test UI, check rendering |
+| **File System** | @modelcontextprotocol/server-filesystem | Controlled file access with boundaries |
+| **Web Fetch** | @anthropic-ai/server-fetch | Fetch APIs, test endpoints, check responses |
+| **Memory/Knowledge** | @modelcontextprotocol/server-memory | Persistent knowledge graph across sessions |
+| **Slack** | @modelcontextprotocol/server-slack | Send messages, read channels, manage workspace |
+| **Google Drive** | @anthropic-ai/server-gdrive | Search files, read docs, manage folders |
+| **Notion** | @anthropic-ai/server-notion | Query databases, create pages, update records |
+| **Custom API** | Build your own MCP server | Any internal API, monitoring, proprietary tools |
+
+### Setup: Claude Code
+
+```bash
+# Database — PostgreSQL
+claude mcp add postgres -- npx @anthropic-ai/server-postgres \
+  --connection-string postgresql://user:pass@localhost:5432/mydb
+
+# GitHub
+claude mcp add github -- npx @modelcontextprotocol/server-github
+
+# Browser Testing
+claude mcp add puppeteer -- npx @anthropic-ai/server-puppeteer
+
+# Web Fetching
+claude mcp add fetch -- npx @anthropic-ai/server-fetch
+
+# File System (with boundaries)
+claude mcp add filesystem -- npx @modelcontextprotocol/server-filesystem \
+  /path/to/allowed/dir
+
+# Memory/Knowledge Graph
+claude mcp add memory -- npx @modelcontextprotocol/server-memory
+
+# Custom MCP (your own server)
+claude mcp add myapi -- npx my-mcp-server --config ./mcp-config.json
+```
+
+### Setup: Hermes
+
+```bash
+# Add MCP server
+hermes mcp add postgres --url postgresql://localhost:5432/mydb
+hermes mcp add github --command "npx @modelcontextprotocol/server-github"
+
+# List configured servers
+hermes mcp list
+
+# Test connection
+hermes mcp test postgres
+
+# Configure which tools to expose
+hermes mcp configure postgres
+```
+
+### MCP Scopes (Claude Code)
+
+| Flag | Scope | Storage | When to Use |
+|------|-------|---------|-------------|
+| `-s user` | Global (all projects) | `~/.claude.json` | Tools you always need (GitHub, Memory) |
+| `-s local` | This project (personal) | `.claude/settings.local.json` | Your dev DB, personal tools |
+| `-s project` | This project (team-shared) | `.claude/settings.json` | Team DB, shared CI tools |
+
+### Auto-Detect: Which MCP Servers Does This Project Need?
+
+```python
+# Detection logic based on project files
+needs = []
+
+if has_file("docker-compose.yml") and grep("postgres", "docker-compose.yml"):
+    needs.append("postgresql")
+
+if has_file(".github/"):
+    needs.append("github")
+
+if has_file("playwright.config.ts") or has_file("cypress.config.ts"):
+    needs.append("puppeteer")
+
+if has_file("requirements.txt") and grep("requests", "requirements.txt"):
+    needs.append("fetch")  # API testing
+
+if has_file("package.json") and grep("next", "package.json"):
+    needs.append("puppeteer")  # Next.js usually needs browser testing
+```
+
+### MCP in Print/CI Mode
+
+```bash
+# Bare mode with specific MCP config
+claude --bare -p 'Query database and verify migration' \
+  --mcp-config mcp-servers.json \
+  --strict-mcp-config
+```
+
+`--strict-mcp-config` = HANYA gunakan MCP dari config file, ignore yang lain.
+
+### MCP Limits & Tuning
+
+| Setting | Default | Recommendation |
+|---------|---------|----------------|
+| Tool descriptions | 2KB cap per server | Keep descriptions concise |
+| Result size | Capped | Use `maxResultSizeChars` annotation for large output |
+| Output tokens | Varies | `export MAX_MCP_OUTPUT_TOKENS=50000` to cap |
+
+### Custom MCP Server Template
+
+Untuk API internal atau proprietary tools, buat MCP server sendiri:
+
+```javascript
+// my-mcp-server.js
+const { Server } = require("@modelcontextprotocol/sdk/server/index.js");
+const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
+
+const server = new Server({ name: "my-api", version: "1.0.0" });
+
+server.setRequestHandler("tools/list", async () => ({
+  tools: [{
+    name: "get_user",
+    description: "Get user by ID from internal API",
+    inputSchema: {
+      type: "object",
+      properties: { user_id: { type: "string" } },
+      required: ["user_id"]
+    }
+  }]
+}));
+
+server.setRequestHandler("tools/call", async (request) => {
+  if (request.params.name === "get_user") {
+    const res = await fetch(`https://internal-api/users/${request.params.arguments.user_id}`);
+    return { content: [{ type: "text", text: await res.text() }] };
+  }
+});
+
+const transport = new StdioServerTransport();
+server.connect(transport);
+```
+
+```bash
+# Register it
+claude mcp add myapi -- node my-mcp-server.js
+```
+
+---
+
 ## Context File Ecosystem
 
 ### Files by Agent Compatibility
@@ -302,29 +480,10 @@ Hermes: when working in this repo, follow these rules.
 ### Step 0: SOUL.md (PILAR 1 — FONDASI)
 
 ```bash
-# Check if SOUL.md exists
 cat ~/.hermes/SOUL.md 2>/dev/null || echo "NEED TO CREATE SOUL.md"
 ```
 
-Jika belum ada, deteksi tech stack lalu buat SOUL.md:
-
-```python
-# Detection logic
-if has_file("package.json") and has_file("tsconfig.json"):
-    role = "frontend engineer"
-    primary = "React, TypeScript, Next.js"
-elif has_file("pyproject.toml") or has_file("requirements.txt"):
-    role = "backend engineer"
-    primary = "Python, FastAPI, SQLAlchemy"
-elif has_file("go.mod"):
-    role = "backend engineer"
-    primary = "Go, Gin, GORM"
-elif has_file("Cargo.toml"):
-    role = "systems engineer"
-    primary = "Rust"
-```
-
-Gunakan template SOUL.md di atas, customize berdasarkan deteksi.
+Jika belum ada, deteksi tech stack lalu buat SOUL.md dari template di atas.
 
 ### Step 1: Detect Project Type
 
@@ -339,46 +498,61 @@ cat package.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.
 ls CLAUDE.md AGENTS.md .hermes.md .cursorrules .claude/ .cursor/ 2>/dev/null
 ```
 
-### Step 3: Generate Context Files
+### Step 3: Setup MCP Servers (PILAR 2)
 
-Fill templates with REAL data from project:
-- Build commands from package.json / Makefile / pyproject.toml
-- Actual directory structure
-- Real test commands
-- Specific framework conventions
+Deteksi kebutuhan MCP dari project files:
 
-**Order:** SOUL.md (jika belum ada) → AGENTS.md → CLAUDE.md → .hermes.md
+```bash
+# Check docker-compose for databases
+grep -l "postgres\|mysql\|mongo" docker-compose.yml 2>/dev/null
 
-### Step 4: Verify
+# Check for GitHub Actions
+ls .github/ 2>/dev/null
+
+# Check for browser testing
+ls playwright.config.* cypress.config.* 2>/dev/null
+
+# Check for API clients
+grep -l "axios\|requests\|fetch" package.json requirements.txt 2>/dev/null
+```
+
+Setup MCP yang relevan:
+
+```bash
+# Claude Code
+claude mcp add <name> -- npx <package> [args]
+
+# Hermes
+hermes mcp add <name> --url <url> atau --command "<cmd>"
+```
+
+### Step 4: Generate Context Files
+
+Fill templates with REAL data from project. Order: AGENTS.md → CLAUDE.md → .hermes.md
+
+### Step 5: Verify
 
 - Files under 200 lines each
 - Build/test commands actually work
+- MCP servers connect successfully (`hermes mcp test <name>`)
 - No contradictions between files
-- SOUL.md philosophy aligns with project rules
 
 ---
 
-## How PILAR 1 Makes Everything Work
+## How PILAR 2 Makes Everything Work
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    WITHOUT SOUL.md                          │
+│  Agent + Context Files + MCP Servers                        │
 ├─────────────────────────────────────────────────────────────┤
-│  User: "Fix this bug"                                       │
-│  Agent: *random approach, inconsistent style*               │
-│  User: "No, use pattern X"                                  │
-│  Agent: *forgets next session*                              │
-│  User: "I said use pattern X!"                              │
-│  Agent: *apologies, uses X, forgets again*                  │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                    WITH SOUL.md                             │
-├─────────────────────────────────────────────────────────────┤
-│  User: "Fix this bug"                                       │
-│  Agent: *uses pattern X automatically, consistent style*    │
-│  User: "Perfect"                                            │
-│  Agent: *continues with same approach next session*         │
+│                                                             │
+│  SOUL.md (PILAR 1)     → Agent TAHU siapa dirinya          │
+│  AGENTS.md/CLAUDE.md   → Agent TAHU projectnya             │
+│  MCP Servers (PILAR 2) → Agent BISA aksi langsung           │
+│                                                             │
+│  Result: Agent bisa → explore → plan → code → VERIFY        │
+│          tanpa minta user jalankan commands                  │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -388,16 +562,17 @@ Fill templates with REAL data from project:
 
 ### Tier 1 — Highest Impact (always include)
 1. **SOUL.md (PILAR 1)** — Agent identity foundation
-2. **Build/test commands** — Agent can't guess these
-3. **Verification commands** — Enables self-correcting loops
-4. **Code style rules that DIFFER from defaults**
-5. **Architecture decisions** specific to project
-6. **Common gotchas** and non-obvious behaviors
+2. **MCP Servers (PILAR 2)** — Agent can verify its own work
+3. **Build/test commands** — Agent can't guess these
+4. **Verification commands** — Enables self-correcting loops
+5. **Code style rules that DIFFER from defaults**
+6. **Architecture decisions** specific to project
+7. **Common gotchas** and non-obvious behaviors
 
 ### Tier 2 — High Impact (include when relevant)
-7. **Repo etiquette** — branch naming, PR conventions
-8. **Testing preferences** — test runner, coverage targets
-9. **Environment quirks** — required env vars
+8. **Repo etiquette** — branch naming, PR conventions
+9. **Testing preferences** — test runner, coverage targets
+10. **Environment quirks** — required env vars
 
 ### NEVER Include
 - ✗ Standard language conventions
@@ -435,21 +610,6 @@ Fill templates with REAL data from project:
 
 ---
 
-## Cross-Agent Compatibility
-
-```markdown
-# AGENTS.md (portable — works everywhere)
-## Build
-- `make test` — run tests
-
-# CLAUDE.md (imports AGENTS.md, adds Claude-specific)
-@AGENTS.md
-## Claude-Specific
-- Use plan mode for changes under src/billing/
-```
-
----
-
 ## Installing This Skill
 
 ```bash
@@ -463,12 +623,12 @@ Or just tell your AI agent: "Setup AI context for this project"
 ## Pitfalls
 
 1. **No SOUL.md = inconsistent agent personality** — Always create SOUL.md first
-2. **Bloated context files REDUCE adherence** — Keep < 200 lines
-3. **Contradicting rules cause random behavior** — Review periodically
-4. **"Write clean code" is wasted space** — Self-evident instructions don't change behavior
-5. **SOUL.md di wrong location** — Must be global (~/.hermes/SOUL.md), not project-level
-6. **SOUL.md philosophy vs project rules conflict** — Ensure alignment
-7. **Path-scoped rules are on-demand** — Don't put critical global rules there
-8. **`/compact` can lose context** — Important rules should be in context files, not conversation
-9. **AGENTS.md only loads from cwd** — Root placement matters
-10. **Hermes .hermes.md walks parents** — Stops at git root boundary
+2. **No MCP = agent can't verify its own work** — Setup relevant MCP servers
+3. **Too many MCP servers = context bloat** — Only add what project needs
+4. **MCP without --strict-mcp-config in CI** — May load unwanted servers
+5. **Bloated context files REDUCE adherence** — Keep < 200 lines
+6. **Contradicting rules cause random behavior** — Review periodically
+7. **SOUL.md di wrong location** — Must be global (~/.hermes/SOUL.md), not project-level
+8. **Path-scoped rules are on-demand** — Don't put critical global rules there
+9. **`/compact` can lose context** — Important rules should be in context files
+10. **AGENTS.md only loads from cwd** — Root placement matters
