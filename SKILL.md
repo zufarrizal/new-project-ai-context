@@ -1,13 +1,13 @@
 ---
 name: project-context-setup
-description: "Set up AI context files for new projects across all coding agents (Hermes, Claude Code, Cursor, Codex). Maximizes AI output quality through structured context. Includes PILAR 1: SOUL.md, PILAR 2: MCP Servers, PILAR 3: Hooks."
-version: 1.3.0
+description: "Set up AI context files for new projects across all coding agents (Hermes, Claude Code, Cursor, Codex). Maximizes AI output quality through structured context. Includes PILAR 1: SOUL.md, PILAR 2: MCP Servers, PILAR 3: Hooks, PILAR 4: Skills."
+version: 1.4.0
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [ai-context, project-setup, claude-md, agents-md, cursorrules, soul-md, mcp-servers, hooks, coding-agents]
+    tags: [ai-context, project-setup, claude-md, agents-md, cursorrules, soul-md, mcp-servers, hooks, skills, coding-agents]
     related_skills: [hermes-agent, claude-code, codex, opencode]
 ---
 
@@ -299,7 +299,6 @@ hermes mcp configure postgres
 ### Auto-Detect: Which MCP Servers Does This Project Need?
 
 ```python
-# Detection logic based on project files
 needs = []
 
 if has_file("docker-compose.yml") and grep("postgres", "docker-compose.yml"):
@@ -312,22 +311,8 @@ if has_file("playwright.config.ts") or has_file("cypress.config.ts"):
     needs.append("puppeteer")
 
 if has_file("requirements.txt") and grep("requests", "requirements.txt"):
-    needs.append("fetch")  # API testing
-
-if has_file("package.json") and grep("next", "package.json"):
-    needs.append("puppeteer")  # Next.js usually needs browser testing
+    needs.append("fetch")
 ```
-
-### MCP in Print/CI Mode
-
-```bash
-# Bare mode with specific MCP config
-claude --bare -p 'Query database and verify migration' \
-  --mcp-config mcp-servers.json \
-  --strict-mcp-config
-```
-
-`--strict-mcp-config` = HANYA gunakan MCP dari config file, ignore yang lain.
 
 ### MCP Limits & Tuning
 
@@ -336,40 +321,6 @@ claude --bare -p 'Query database and verify migration' \
 | Tool descriptions | 2KB cap per server | Keep descriptions concise |
 | Result size | Capped | Use `maxResultSizeChars` annotation for large output |
 | Output tokens | Varies | `export MAX_MCP_OUTPUT_TOKENS=50000` to cap |
-
-### Custom MCP Server Template
-
-Untuk API internal atau proprietary tools, buat MCP server sendiri:
-
-```javascript
-// my-mcp-server.js
-const { Server } = require("@modelcontextprotocol/sdk/server/index.js");
-const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
-
-const server = new Server({ name: "my-api", version: "1.0.0" });
-
-server.setRequestHandler("tools/list", async () => ({
-  tools: [{
-    name: "get_user",
-    description: "Get user by ID from internal API",
-    inputSchema: {
-      type: "object",
-      properties: { user_id: { type: "string" } },
-      required: ["user_id"]
-    }
-  }]
-}));
-
-server.setRequestHandler("tools/call", async (request) => {
-  if (request.params.name === "get_user") {
-    const res = await fetch(`https://internal-api/users/${request.params.arguments.user_id}`);
-    return { content: [{ type: "text", text: await res.text() }] };
-  }
-});
-
-const transport = new StdioServerTransport();
-server.connect(transport);
-```
 
 ---
 
@@ -390,7 +341,6 @@ Hooks adalah **otomatisasi yang berjalan tanpa user intervention**. Agent punya 
 │  User: "Run it again"                                       │
 │  Agent: *runs linter, passes*                               │
 │  User: "Now run tests"                                      │
-│  Agent: *runs tests, finds failures*                        │
 │  → User jadi babysitter, bukan reviewer                     │
 └─────────────────────────────────────────────────────────────┘
 
@@ -410,18 +360,16 @@ Hooks adalah **otomatisasi yang berjalan tanpa user intervention**. Agent punya 
 
 | Hook | Kapan Fire | Contoh Penggunaan |
 |------|-----------|-------------------|
-| `UserPromptSubmit` | Sebelum proses prompt | Input validation, logging, context injection |
+| `UserPromptSubmit` | Sebelum proses prompt | Input validation, logging |
 | `PreToolUse` | Sebelum tool jalan | Security gates, block dangerous commands |
 | `PostToolUse` | Setelah tool selesai | Auto-format, run linters, auto-test |
 | `Notification` | Saat permission request | Desktop notifications, Slack alerts |
 | `Stop` | Saat agent selesai respond | Completion logging, auto-commit |
-| `SubagentStop` | Saat subagent selesai | Agent orchestration, result aggregation |
-| `PreCompact` | Sebelum context di-compress | Backup session, save state |
-| `SessionStart` | Saat session mulai | Load dev context, check environment |
+| `SubagentStop` | Saat subagent selesai | Agent orchestration |
+| `PreCompact` | Sebelum context di-compress | Backup session |
+| `SessionStart` | Saat session mulai | Load dev context |
 
 ### Setup: Claude Code
-
-Hooks dikonfigurasi di `.claude/settings.json` (project) atau `~/.claude/settings.json` (global).
 
 ```json
 {
@@ -429,167 +377,361 @@ Hooks dikonfigurasi di `.claude/settings.json` (project) atau `~/.claude/setting
     "PostToolUse": [
       {
         "matcher": "Write(*.py)",
-        "hooks": [
-          {"type": "command", "command": "ruff check --fix $CLAUDE_FILE_PATHS"}
-        ]
-      },
-      {
-        "matcher": "Write(*.ts)",
-        "hooks": [
-          {"type": "command", "command": "npx prettier --write $CLAUDE_FILE_PATHS"}
-        ]
+        "hooks": [{"type": "command", "command": "ruff check --fix $CLAUDE_FILE_PATHS"}]
       }
     ],
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'rm -rf|git push.*--force|DROP TABLE'; then echo 'BLOCKED: Dangerous command!' && exit 2; fi"
-          }
-        ]
+        "hooks": [{
+          "type": "command",
+          "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'rm -rf|DROP TABLE'; then echo 'BLOCKED!' && exit 2; fi"
+        }]
       }
     ],
     "Stop": [
       {
-        "hooks": [
-          {"type": "command", "command": "echo \"[$(date)] Task completed\" >> ~/.claude/activity.log"}
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "hooks": [
-          {"type": "command", "command": "notify-send 'Claude Code' 'Waiting for your input'"}
-        ]
+        "hooks": [{"type": "command", "command": "echo \"[$(date)] Task completed\" >> ~/.claude/activity.log"}]
       }
     ]
   }
 }
 ```
-
-### Setup: Hermes
-
-Hooks di Hermes menggunakan config.yaml:
-
-```yaml
-# ~/.hermes/config.yaml
-hooks:
-  post_tool_use:
-    - matcher: "write_file(*.py)"
-      command: "ruff check --fix {file_path}"
-    - matcher: "write_file(*.ts)"
-      command: "npx prettier --write {file_path}"
-  pre_tool_use:
-    - matcher: "terminal"
-      command: "echo '{input}' | grep -qE 'rm -rf|DROP TABLE' && exit 1 || exit 0"
-  stop:
-    - command: "echo '[$(date)] Task completed' >> ~/.hermes/activity.log"
-```
-
-### Hook Environment Variables
-
-| Variable | Content |
-|----------|---------|
-| `CLAUDE_PROJECT_DIR` | Current project path |
-| `CLAUDE_FILE_PATHS` | Files being modified |
-| `CLAUDE_TOOL_INPUT` | Tool parameters as JSON |
 
 ### Auto-Detect: Which Hooks Does This Project Need?
 
+```bash
+# Python linters
+grep -l "ruff\|black\|flake8\|mypy" pyproject.toml 2>/dev/null
+
+# JS/TS linters
+ls .eslintrc* .prettierrc* eslint.config.* 2>/dev/null
+
+# Go
+ls .golangci.yml 2>/dev/null
+
+# Rust
+ls rustfmt.toml clippy.toml 2>/dev/null
+```
+
+### Per-Language Hook Examples
+
+**Python:** `ruff check --fix $CLAUDE_FILE_PATHS && mypy $CLAUDE_FILE_PATHS`
+**TypeScript:** `npx prettier --write $CLAUDE_FILE_PATHS && npx eslint --fix $CLAUDE_FILE_PATHS`
+**Go:** `gofmt -w $CLAUDE_FILE_PATHS && go vet ./...`
+**Rust:** `cargo fmt -- $CLAUDE_FILE_PATHS && cargo clippy -- -D warnings`
+
+### Exit Codes
+
+| Exit | Meaning |
+|------|---------|
+| 0 | Hook passed, continue |
+| 1 | Hook failed, log warning, continue |
+| 2 | Hook BLOCKS the action, stop execution |
+
+---
+
+## PILAR 4: Skills — Reusable Procedures
+
+Skills adalah **prosedur yang bisa dipakai ulang** tanpa harus dijelaskan setiap session. Agent tidak reinvent the wheel — langsung tahu workflow yang harus diikuti.
+
+### Kenapa Skills Penting?
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    WITHOUT SKILLS                           │
+├─────────────────────────────────────────────────────────────┤
+│  User: "Add a new API endpoint"                             │
+│  Agent: *looks at existing code*                            │
+│  Agent: *guesses pattern*                                   │
+│  Agent: *creates file in wrong location*                    │
+│  User: "No, put it in src/api/handlers/"                    │
+│  Agent: *moves file*                                        │
+│  User: "Also add to the router"                             │
+│  Agent: *forgets test*                                      │
+│  User: "Where's the test?"                                  │
+│  → 5 rounds of correction for a repeatable task             │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    WITH SKILLS                              │
+├─────────────────────────────────────────────────────────────┤
+│  User: "Add a new API endpoint"                             │
+│  Agent: *loads add-api-endpoint skill*                      │
+│  Agent: *creates handler in src/api/handlers/*              │
+│  Agent: *adds route in router.py*                           │
+│  Agent: *writes test in tests/api/*                         │
+│  Agent: *runs `make test`*                                  │
+│  Agent: "Done. New endpoint added with test."               │
+│  → Zero correction rounds                                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Skills vs Context Files
+
+| Aspect | Context Files (AGENTS.md) | Skills |
+|--------|--------------------------|--------|
+| **When loaded** | Every session, always | On-demand, when relevant |
+| **Size** | < 200 lines (keep lean) | Can be detailed |
+| **Scope** | Project-wide rules | Specific workflow/procedure |
+| **Use case** | "How we code in general" | "How to do X step by step" |
+| **Token cost** | Always paid | Only paid when used |
+
+### Skills by Platform
+
+| Platform | Lokasi | Trigger |
+|----------|--------|---------|
+| Hermes | `~/.hermes/skills/` | Auto-detected, `/skill name`, `-s name` |
+| Claude Code | `.claude/skills/` (project) or `~/.claude/skills/` (global) | Natural language match |
+| Cursor | `.cursor/rules/*.mdc` (path-scoped) | File type match |
+
+### Skills Every Project Should Have
+
+#### 1. Add API Endpoint
+
+```markdown
+# .claude/skills/add-api-endpoint.md
+
+When asked to add a new API endpoint:
+
+1. Check existing endpoints in src/api/handlers/ for patterns
+2. Create handler file: src/api/handlers/{resource}.py
+3. Define route with proper HTTP method (GET/POST/PUT/DELETE)
+4. Add request/response models in src/api/models/
+5. Register route in src/api/router.py
+6. Write unit test in tests/api/test_{resource}.py
+7. Run `make test` to verify
+8. Update API docs if they exist
+
+## Patterns
+- Use dependency injection for database sessions
+- Return proper HTTP status codes (201 for create, 204 for delete)
+- Always validate input with Pydantic models
+- Use async handlers for I/O operations
+```
+
+#### 2. Database Migration
+
+```markdown
+# .claude/skills/database-migration.md
+
+When asked to create or modify database migrations:
+
+1. Check current schema in src/models/
+2. Generate migration: `alembic revision --autogenerate -m "description"`
+3. Review generated migration file in alembic/versions/
+4. ALWAYS create a rollback: add `downgrade()` function
+5. Test migration: `alembic upgrade head`
+6. Test rollback: `alembic downgrade -1`
+7. Test forward again: `alembic upgrade head`
+
+## Rules
+- Never modify existing migration files that are already committed
+- Always include data migration when changing column types
+- Add `op.execute()` for complex data transformations
+- Name migrations descriptively: `add_user_avatar_column`
+```
+
+#### 3. Add New Feature
+
+```markdown
+# .claude/skills/add-feature.md
+
+When asked to add a new feature:
+
+## Phase 1: Explore
+1. Understand existing code patterns (read similar features)
+2. Identify affected files and dependencies
+3. Check if feature needs database changes
+
+## Phase 2: Plan
+4. Create a branch: `git checkout -b feat/{feature-name}`
+5. List files to create/modify
+
+## Phase 3: Implement
+6. Write code following existing patterns
+7. Add tests (unit + integration)
+8. Run `make test` and `make lint`
+
+## Phase 4: Verify
+9. Manual testing if UI changes
+10. Check edge cases
+11. Commit with descriptive message: `feat: {description}`
+
+## Rules
+- Follow existing code patterns, don't introduce new ones
+- Write tests BEFORE or ALONGSIDE code, not after
+- If feature touches 3+ files, create a plan first
+```
+
+#### 4. Debug Issue
+
+```markdown
+# .claude/skills/debug-issue.md
+
+When asked to debug an issue:
+
+## Phase 1: Reproduce
+1. Understand the exact error message and stack trace
+2. Try to reproduce the issue locally
+3. Check if it's consistent or intermittent
+
+## Phase 2: Investigate
+4. Add logging at key points
+5. Check recent changes: `git log --oneline -10`
+6. Check related files for obvious issues
+7. Use debugger if available
+
+## Phase 3: Fix
+8. Identify root cause (not just symptom)
+9. Write a failing test that reproduces the issue
+10. Fix the code
+11. Verify test now passes
+
+## Phase 4: Verify
+12. Run full test suite
+13. Check for similar issues elsewhere
+14. Commit: `fix: {description}`
+
+## Rules
+- Never suppress errors without understanding them
+- Always write a test that reproduces the bug first
+- Fix root cause, not symptom
+```
+
+#### 5. Code Review
+
+```markdown
+# .claude/skills/code-review.md
+
+When asked to review code:
+
+## Checklist
+1. **Correctness**: Does it do what it's supposed to?
+2. **Edge cases**: What about null, empty, overflow, boundary?
+3. **Security**: Any injection, auth bypass, data leak?
+4. **Performance**: N+1 queries, unnecessary loops, large allocations?
+5. **Tests**: Are there tests? Do they cover edge cases?
+6. **Style**: Does it follow project conventions?
+7. **Error handling**: Are errors handled properly?
+8. **Documentation**: Are complex parts documented?
+
+## Output Format
+For each issue found:
+- **File**: path/to/file.py:42
+- **Severity**: critical/warning/info
+- **Issue**: Description
+- **Suggestion**: How to fix
+
+## Rules
+- Be specific, not vague ("This will cause X because Y")
+- Suggest fixes, not just problems
+- Praise good patterns when you see them
+```
+
+#### 6. Deploy
+
+```markdown
+# .claude/skills/deploy.md
+
+When asked to deploy:
+
+## Pre-Deploy
+1. Run full test suite: `make test`
+2. Run linter: `make lint`
+3. Check for uncommitted changes: `git status`
+4. Verify on correct branch: `git branch`
+
+## Deploy Steps
+5. Build: `make build`
+6. Push to registry: `make push`
+7. Deploy to staging: `make deploy-staging`
+8. Run smoke tests on staging
+9. Deploy to production: `make deploy-prod`
+
+## Post-Deploy
+10. Monitor logs for 5 minutes
+11. Check error rates in monitoring dashboard
+12. Tag release: `git tag v{version}`
+
+## Rules
+- NEVER deploy directly to production
+- Always deploy to staging first
+- If smoke tests fail, rollback immediately
+- Notify team after successful deploy
+```
+
+### Auto-Detect: Which Skills Does This Project Need?
+
 ```python
-# Detection logic
-hooks_needed = []
+skills_needed = []
 
-# Linting
-if has_file("pyproject.toml") and grep("ruff", "pyproject.toml"):
-    hooks_needed.append({"matcher": "Write(*.py)", "command": "ruff check --fix {files}"})
+# API project
+if has_file("src/api/") or has_file("routes/"):
+    skills_needed.append("add-api-endpoint")
 
-if has_file(".eslintrc") or has_file("eslint.config.js"):
-    hooks_needed.append({"matcher": "Write(*.ts)", "command": "npx eslint --fix {files}"})
+# Has database
+if has_file("alembic/") or has_file("migrations/"):
+    skills_needed.append("database-migration")
 
-if has_file(".prettierrc"):
-    hooks_needed.append({"matcher": "Write(*.ts)", "command": "npx prettier --write {files}"})
+# Has CI/CD
+if has_file(".github/workflows/") or has_file("Jenkinsfile"):
+    skills_needed.append("deploy")
 
-# Testing
-if has_file("pytest.ini") or has_file("pyproject.toml") and grep("pytest", "pyproject.toml"):
-    hooks_needed.append({"matcher": "Write(*.py)", "command": "pytest --tb=short -q"})
-
-if has_file("jest.config.js") or has_file("vitest.config.ts"):
-    hooks_needed.append({"matcher": "Write(*.test.ts)", "command": "npx vitest run {file}"})
-
-# Security
-if has_file(".env"):
-    hooks_needed.append({"matcher": "Bash", "command": "grep -q 'SECRET\\|KEY\\|PASSWORD' {input} && exit 1 || exit 0"})
+# Always useful
+skills_needed.append("add-feature")
+skills_needed.append("debug-issue")
+skills_needed.append("code-review")
 ```
 
-### Security Hook Patterns
+### Creating Skills: Best Practices
 
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; cmd=json.load(sys.stdin).get('command',''); dangerous=['rm -rf','git push --force','chmod 777','curl|sh','wget|sh','DROP TABLE','DELETE FROM']; [print('BLOCKED:',d) or sys.exit(2) for d in dangerous if d in cmd]\""
-          }
-        ]
-      }
-    ]
-  }
-}
+```markdown
+# Skill Structure
+
+## Trigger Condition
+"When asked to..." or "When working with..."
+
+## Steps (numbered)
+1. First step
+2. Second step
+3. ...
+
+## Rules (bullet points)
+- Rule 1
+- Rule 2
+
+## Examples (optional)
+- Input → Output
 ```
 
-### Hook Execution Rules
+### Skill Size Guidelines
 
-| Rule | Detail |
-|------|--------|
-| Exit 0 | Hook passed, continue |
-| Exit 1 | Hook failed, log warning, continue |
-| Exit 2 | Hook BLOCKS the action, stop execution |
-| Timeout | 60 seconds default, hook killed after |
-| Output | stdout/stderr shown to agent |
+| Size | When to Use |
+|------|-------------|
+| < 50 lines | Simple workflow (add endpoint, write test) |
+| 50-150 lines | Medium workflow (database migration, deploy) |
+| 150-300 lines | Complex workflow (full feature, architecture change) |
+| > 300 lines | Split into multiple skills |
 
-### Hook Examples by Project Type
+### Skill Loading Strategies
 
-**Python Project:**
-```json
-{
-  "PostToolUse": [
-    {"matcher": "Write(*.py)", "hooks": [{"type": "command", "command": "ruff check --fix $CLAUDE_FILE_PATHS && mypy $CLAUDE_FILE_PATHS"}]}
-  ]
-}
+**Hermes:**
+```bash
+# Auto-load at session start
+hermes -s add-api-endpoint,debug-issue
+
+# Load during session
+/skill add-api-endpoint
+
+# In CLAUDE.md or AGENTS.md
+When working on API tasks, load the add-api-endpoint skill.
 ```
 
-**TypeScript Project:**
-```json
-{
-  "PostToolUse": [
-    {"matcher": "Write(*.ts)", "hooks": [{"type": "command", "command": "npx prettier --write $CLAUDE_FILE_PATHS && npx eslint --fix $CLAUDE_FILE_PATHS"}]}
-  ]
-}
-```
-
-**Go Project:**
-```json
-{
-  "PostToolUse": [
-    {"matcher": "Write(*.go)", "hooks": [{"type": "command", "command": "gofmt -w $CLAUDE_FILE_PATHS && go vet ./..."}]}
-  ]
-}
-```
-
-**Rust Project:**
-```json
-{
-  "PostToolUse": [
-    {"matcher": "Write(*.rs)", "hooks": [{"type": "command", "command": "cargo fmt -- $CLAUDE_FILE_PATHS && cargo clippy -- -D warnings"}]}
-  ]
-}
+**Claude Code:**
+```markdown
+# .claude/skills/ directory — loaded on demand via natural language
+# "Add a new API endpoint" → automatically loads add-api-endpoint.md
 ```
 
 ---
@@ -636,17 +778,11 @@ if has_file(".env"):
 ## Code Standards
 - {language-specific style rules that differ from defaults}
 - {naming conventions}
-- {import style}
 
 ## Testing
 - Test framework: {pytest, jest, vitest, etc.}
 - Run single test: `{command}`
 - Coverage target: {percentage}
-
-## Git Workflow
-- Branch naming: {convention}
-- PR conventions: {rules}
-- Commit format: {type: description}
 
 ## Common Gotchas
 - {non-obvious behaviors}
@@ -667,7 +803,6 @@ if has_file(".env"):
 ## Claude-Specific Instructions
 - Use plan mode for changes affecting 3+ files
 - Always run tests after modifications
-- Prefer {specific patterns for this project}
 ```
 
 ### .hermes.md (Hermes-Specific)
@@ -679,13 +814,11 @@ Hermes: when working in this repo, follow these rules.
 
 ## Build
 - {build commands}
-- {test commands}
 
 ## Style
 - {code style rules}
 
 ## Workflow
-- {workflow rules}
 - {verification steps}
 ```
 
@@ -693,19 +826,16 @@ Hermes: when working in this repo, follow these rules.
 
 ## Setup Procedure
 
-### Step 0: SOUL.md (PILAR 1 — FONDASI)
+### Step 0: SOUL.md (PILAR 1)
 
 ```bash
 cat ~/.hermes/SOUL.md 2>/dev/null || echo "NEED TO CREATE SOUL.md"
 ```
 
-Jika belum ada, deteksi tech stack lalu buat SOUL.md dari template di atas.
-
 ### Step 1: Detect Project Type
 
 ```bash
 ls package.json pyproject.toml Cargo.toml go.mod Makefile Dockerfile 2>/dev/null
-cat package.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('name',''), d.get('scripts',{}))"
 ```
 
 ### Step 2: Detect Existing Context Files
@@ -717,75 +847,71 @@ ls CLAUDE.md AGENTS.md .hermes.md .cursorrules .claude/ .cursor/ 2>/dev/null
 ### Step 3: Setup MCP Servers (PILAR 2)
 
 ```bash
-# Check docker-compose for databases
 grep -l "postgres\|mysql\|mongo" docker-compose.yml 2>/dev/null
-
-# Check for GitHub Actions
-ls .github/ 2>/dev/null
-
-# Check for browser testing
-ls playwright.config.* cypress.config.* 2>/dev/null
+ls .github/ playwright.config.* cypress.config.* 2>/dev/null
 ```
-
-Setup MCP yang relevan.
 
 ### Step 4: Setup Hooks (PILAR 3)
 
-Deteksi linter/formatter dari project:
-
 ```bash
-# Python
-grep -l "ruff\|black\|flake8\|mypy" pyproject.toml setup.cfg .flake8 2>/dev/null
-
-# JavaScript/TypeScript
-ls .eslintrc* .prettierrc* eslint.config.* prettier.config.* 2>/dev/null
-
-# Go
-ls .golangci.yml 2>/dev/null
-
-# Rust
-ls rustfmt.toml clippy.toml 2>/dev/null
+grep -l "ruff\|black\|flake8\|mypy" pyproject.toml 2>/dev/null
+ls .eslintrc* .prettierrc* eslint.config.* 2>/dev/null
 ```
 
-Generate `.claude/settings.json` dengan hooks yang relevan.
+### Step 5: Create Skills (PILAR 4)
 
-### Step 5: Generate Context Files
+```bash
+# Check for API structure
+ls src/api/ routes/ app/api/ 2>/dev/null
 
-Fill templates with REAL data from project. Order: AGENTS.md → CLAUDE.md → .hermes.md
+# Check for database migrations
+ls alembic/ migrations/ prisma/ 2>/dev/null
 
-### Step 6: Verify
+# Check for CI/CD
+ls .github/workflows/ Jenkinsfile Makefile 2>/dev/null
+```
+
+Create skills based on detected project structure.
+
+### Step 6: Generate Context Files
+
+Fill templates with REAL data. Order: AGENTS.md → CLAUDE.md → .hermes.md
+
+### Step 7: Verify
 
 - Files under 200 lines each
-- Build/test commands actually work
-- MCP servers connect successfully
-- Hooks execute without errors
-- No contradictions between files
+- Build/test commands work
+- MCP servers connect
+- Hooks execute
+- Skills load correctly
 
 ---
 
-## How 3 PILAR Bekerja Bersama
+## How 4 PILAR Bekerja Bersama
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Agent + 3 PILAR = FULLY AUTONOMOUS                         │
+│  Agent + 4 PILAR = FULLY AUTONOMOUS                         │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  PILAR 1: SOUL.md        → Agent TAHU siapa dirinya        │
 │  PILAR 2: MCP Servers    → Agent BISA aksi langsung         │
 │  PILAR 3: Hooks          → Agent AUTO-jaga kualitas         │
+│  PILAR 4: Skills         → Agent TAHU cara kerja            │
 │                                                             │
 │  Context Files (AGENTS.md, CLAUDE.md)                       │
 │            → Agent TAHU projectnya                          │
 │                                                             │
 │  Result:                                                    │
 │  ┌─────────────────────────────────────────────┐            │
-│  │ User: "Build feature X"                      │            │
-│  │ Agent: *plans based on SOUL.md personality*  │            │
+│  │ User: "Add new API endpoint"                 │            │
+│  │ Agent: *loads skill (PILAR 4)*               │            │
+│  │ Agent: *follows SOUL.md style (PILAR 1)*     │            │
 │  │ Agent: *codes based on AGENTS.md rules*      │            │
-│  │ Hook: *auto-lints, auto-formats*             │            │
-│  │ Agent: *tests via MCP database*              │            │
-│  │ Hook: *auto-runs test suite*                 │            │
-│  │ Agent: "Done. All tests passing. PR ready."  │            │
+│  │ Hook: *auto-lints (PILAR 3)*                 │            │
+│  │ Agent: *tests via MCP (PILAR 2)*             │            │
+│  │ Hook: *auto-runs tests (PILAR 3)*            │            │
+│  │ Agent: "Done. Endpoint added, tested, PR."   │            │
 │  │ User: *reviews PR*                           │            │
 │  └─────────────────────────────────────────────┘            │
 │                                                             │
@@ -798,23 +924,23 @@ Fill templates with REAL data from project. Order: AGENTS.md → CLAUDE.md → .
 
 ## What Makes Context IMPACTFUL
 
-### Tier 1 — Highest Impact (always include)
-1. **SOUL.md (PILAR 1)** — Agent identity foundation
-2. **MCP Servers (PILAR 2)** — Agent can verify its own work
-3. **Hooks (PILAR 3)** — Auto-quality enforcement
-4. **Build/test commands** — Agent can't guess these
-5. **Verification commands** — Enables self-correcting loops
+### Tier 1 — Highest Impact
+1. **SOUL.md (PILAR 1)** — Agent identity
+2. **MCP Servers (PILAR 2)** — Agent can verify
+3. **Hooks (PILAR 3)** — Auto-quality
+4. **Skills (PILAR 4)** — Reusable procedures
+5. **Build/test commands**
 6. **Code style rules that DIFFER from defaults**
 
-### Tier 2 — High Impact (include when relevant)
+### Tier 2 — High Impact
 7. **Repo etiquette** — branch naming, PR conventions
-8. **Testing preferences** — test runner, coverage targets
-9. **Environment quirks** — required env vars
+8. **Testing preferences**
+9. **Environment quirks**
 
 ### NEVER Include
 - ✗ Standard language conventions
-- ✗ Detailed API documentation (link instead)
-- ✗ Self-evident practices ("write clean code")
+- ✗ Detailed API docs (link instead)
+- ✗ Self-evident practices
 
 ---
 
@@ -824,19 +950,17 @@ Fill templates with REAL data from project. Order: AGENTS.md → CLAUDE.md → .
 hermes skills install zufarrizal/new-project-ai-context
 ```
 
-Or just tell your AI agent: "Setup AI context for this project"
-
 ---
 
 ## Pitfalls
 
-1. **No SOUL.md = inconsistent personality** — Always create SOUL.md first
-2. **No MCP = agent can't verify** — Setup relevant MCP servers
-3. **No hooks = user jadi babysitter** — Setup auto-quality hooks
-4. **Exit 2 in PreToolUse blocks action** — Use carefully
-5. **Hooks timeout = 60s** — Long-running hooks get killed
-6. **Bloated context files REDUCE adherence** — Keep < 200 lines
-7. **Contradicting rules confuse agent** — Review periodically
-8. **SOUL.md di wrong location** — Must be global, not project-level
-9. **Path-scoped rules are on-demand** — Don't put critical global rules there
-10. **`/compact` can lose context** — Important rules in context files, not conversation
+1. **No SOUL.md = inconsistent personality**
+2. **No MCP = agent can't verify**
+3. **No hooks = user jadi babysitter**
+4. **No skills = repeatable tasks need re-explaining**
+5. **Skills too large = split into smaller skills**
+6. **Skills in context files = wasted tokens — use on-demand loading**
+7. **Bloated context files REDUCE adherence** — Keep < 200 lines
+8. **Contradicting rules confuse agent**
+9. **SOUL.md di wrong location** — Must be global
+10. **`/compact` can lose context**
